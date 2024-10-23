@@ -11,6 +11,7 @@ from action import (
     Orientation,
 )
 from agent import Agent
+from constants import is_terminal_state
 from grid import Grid
 
 
@@ -87,13 +88,14 @@ class LGameState(GameState[LGameAction]):
     The state of the L-game
     """
 
-    agents: Sequence[Agent[LGameAction, "LGameState"]]
+    agents: tuple[Agent[LGameAction, "LGameState"], Agent[LGameAction, "LGameState"]]
 
     # the internal grid, should always be normalized
     grid: Grid = field(default_factory=Grid)
     # the orientation to render the grid in (so that the view shown to the player is consistent)
     view_oriention: Orientation = Orientation.NORTH
     view_mirrored: bool = False
+    red_to_move: bool = True
 
     def render(self) -> str:
         """
@@ -148,7 +150,26 @@ class LGameState(GameState[LGameAction]):
         Returns:
             bool: True if the state is terminal, False otherwise
         """
-        return False
+        return is_terminal_state(self.grid, self.red_to_move)
+
+    def copy(self, **kwargs) -> "LGameState":
+        """
+        Create a copy of the game state with the specified modifications
+
+        Args:
+            kwargs: the modifications to make
+
+        Returns:
+            LGameState: the new game state
+        """
+        return LGameState(
+            agents=self.agents,
+            grid=self.grid,
+            view_oriention=self.view_oriention,
+            view_mirrored=self.view_mirrored,
+            red_to_move=self.red_to_move,
+            **kwargs,
+        )
 
 
 @dataclass

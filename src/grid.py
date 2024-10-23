@@ -212,7 +212,6 @@ class Grid:
 
         Returns the normalized grid, the number of times the grid was rotated, and whether the grid was mirrored
         """
-        # TODO: currently just rotates it to the right orientation, should also mirror if necessary
         n = -self.red_position.orientation.index() + Orientation.LENGTH()
         grid = self.rotate(n)
 

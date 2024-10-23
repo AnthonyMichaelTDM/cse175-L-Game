@@ -44,7 +44,21 @@ class AgentType(StrEnum):
         """
         Get an agent of the specified type
         """
-        ...
+        match self:
+            case AgentType.HUMAN:
+                from human import HumanAgent
+
+                return HumanAgent()
+            case AgentType.MINIMAX:
+                return NotImplemented
+                # from computer import MinimaxAgent
+
+                # return MinimaxAgent(depth)
+            case AgentType.ALPHABETA:
+                return NotImplemented
+                # from computer import AlphaBetaAgent
+
+                # return AlphaBetaAgent(depth)
 
 
 # parse command line arguments to create the agents
@@ -71,7 +85,7 @@ player1 = args.p1.get_agent(args.d1 or args.d)
 player2 = args.p2.get_agent(args.d2 or args.d)
 
 # initialize the game
-game = LGame(LGameState([player1, player2]))
+game = LGame(LGameState((player1, player2)))
 
 # run the game loop
 game.run()
