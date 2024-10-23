@@ -1,2 +1,3 @@
-# cse175-L-Game
+# L-Game
+
 work for my CSE175 class' L-Game lab
