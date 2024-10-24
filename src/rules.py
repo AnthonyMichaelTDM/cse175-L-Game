@@ -22,8 +22,19 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             list[LGameAction]: the legal actions
         """
-        ...
+        legal_actions =[]
+        if state.red_to_move:
+            moved_l_piece = state.grid.get_red_legal_moves()
+        else:
+            moved_l_piece = state.grid.get_blue_legal_moves()
+        neutral_piece_moves = state.grid.get_neutral_legal_moves()
 
+        for l_move in moved_l_piece:
+            for neutral_move in neutral_piece_moves:
+                legal_actions.append(LGameAction(l_peice_move=l_move, neutral_peice_move=neutral_move))
+
+        return legal_actions
+    
     def apply_action(self, state: LGameState, action: LGameAction) -> LGameState:
         """
         Apply the specified action to the state
