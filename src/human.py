@@ -73,14 +73,14 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
         orientation = Orientation(args[2])
 
         if len(args) == 3:
-            return LGameAction(LPiecePosition(Coordinate((x - 1, y - 1)), orientation))
+            return LGameAction(LPiecePosition(Coordinate(x - 1, y - 1), orientation))
         else:
             nx1, ny1, nx2, ny2 = map(int, args[3:])
             return LGameAction(
-                LPiecePosition(Coordinate((x - 1, y - 1)), orientation),
+                LPiecePosition(Coordinate(x - 1, y - 1), orientation),
                 (
-                    NeutralPiecePosition(Coordinate((nx1 - 1, ny1 - 1))),
-                    NeutralPiecePosition(Coordinate((nx2 - 1, ny2 - 1))),
+                    NeutralPiecePosition(Coordinate(nx1 - 1, ny1 - 1)),
+                    NeutralPiecePosition(Coordinate(nx2 - 1, ny2 - 1)),
                 ),
             )
 

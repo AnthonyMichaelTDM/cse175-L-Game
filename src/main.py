@@ -80,7 +80,7 @@ parser.add_argument("-d2", type=int, help="Depth limit of the search tree for pl
 
 args = parser.parse_args()
 
-if args.help:
+if hasattr(args, "help"):
     parser.print_help()
     exit()
 
