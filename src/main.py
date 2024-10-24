@@ -80,6 +80,10 @@ parser.add_argument("-d2", type=int, help="Depth limit of the search tree for pl
 
 args = parser.parse_args()
 
+if args.help:
+    parser.print_help()
+    exit()
+
 # create the agents
 player1 = args.p1.get_agent(args.d1 or args.d)
 player2 = args.p2.get_agent(args.d2 or args.d)

@@ -52,7 +52,7 @@ class Grid:
     `x` represents a blue cell
     `#` represents a neutral cell
 
-    the top left corner is (1,1) and the bottom right corner is (4,4)
+    the top left corner is (0,0) and the bottom right corner is (3,3)
 
     """
 
@@ -67,12 +67,12 @@ class Grid:
             ]
         )
     )
-    red_position: LPiecePosition = LPiecePosition(Coordinate(3, 1), Orientation.WEST)
-    blue_position: LPiecePosition = LPiecePosition(Coordinate(2, 4), Orientation.EAST)
+    red_position: LPiecePosition = LPiecePosition(Coordinate((2, 0)), Orientation.WEST)
+    blue_position: LPiecePosition = LPiecePosition(Coordinate((1, 3)), Orientation.EAST)
     neutral_positions: tuple[NeutralPiecePosition, NeutralPiecePosition] = field(
         default_factory=lambda: (
-            NeutralPiecePosition(Coordinate(1, 1)),
-            NeutralPiecePosition(Coordinate(4, 4)),
+            NeutralPiecePosition(Coordinate((0, 0))),
+            NeutralPiecePosition(Coordinate((3, 3))),
         )
     )
 
@@ -99,8 +99,8 @@ class Grid:
 
         grid[red_position.get_cells()] = GridCell.RED
         grid[blue_position.get_cells()] = GridCell.BLUE
-        grid[neutral_positions[0].position.tuple()] = GridCell.NEUTRAL
-        grid[neutral_positions[1].position.tuple()] = GridCell
+        grid[neutral_positions[0].position] = GridCell.NEUTRAL
+        grid[neutral_positions[1].position] = GridCell.NEUTRAL
 
         return Grid(
             grid=grid,
@@ -123,7 +123,7 @@ class Grid:
         # check if the new position is valid
         if any(
             not cell.is_in_bounds()
-            or not (self.grid[cell.tuple()] == GridCell.EMPTY or GridCell.RED)
+            or not (self.grid[cell] == GridCell.EMPTY or GridCell.RED)
             for cell in new_cells
         ):
             raise ValueError("Invalid position")
@@ -146,7 +146,7 @@ class Grid:
         # check if the new position is valid
         if any(
             not cell.is_in_bounds()
-            or not (self.grid[cell.tuple()] == GridCell.EMPTY or GridCell.BLUE)
+            or not (self.grid[cell] == GridCell.EMPTY or GridCell.BLUE)
             for cell in new_cells
         ):
             raise ValueError("Invalid position")
@@ -172,13 +172,13 @@ class Grid:
         if (
             not old_cell.is_in_bounds()
             or not new_cell.is_in_bounds()
-            or self.grid[old_cell.tuple()] != GridCell.NEUTRAL
-            or self.grid[new_cell.tuple()] != GridCell.EMPTY
+            or self.grid[old_cell] != GridCell.NEUTRAL
+            or self.grid[new_cell] != GridCell.EMPTY
         ):
             raise ValueError("Invalid position")
 
-        self.grid[old_cell.tuple()] = GridCell.EMPTY
-        self.grid[new_cell.tuple()] = GridCell.NEUTRAL
+        self.grid[old_cell] = GridCell.EMPTY
+        self.grid[new_cell] = GridCell.NEUTRAL
 
     def render(self) -> str:
         """
@@ -216,7 +216,7 @@ class Grid:
         grid = self.rotate(n)
 
         # check if we need to mirror the grid
-        if grid.red_position.corner.x > 2:
+        if grid.red_position.corner[0] > 1:
             return grid.mirror(), n, True
 
         return grid, n, False

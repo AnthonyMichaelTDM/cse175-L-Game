@@ -8,8 +8,7 @@ from typing import Optional
 from util import IndexableEnum
 
 
-@dataclass(frozen=True)
-class Coordinate:
+class Coordinate(tuple[int, int]):
     """
     An (x,y) coordinate on the game board (4x4 grid), where (1,1) is the top-left corner
 
@@ -17,14 +16,17 @@ class Coordinate:
     y is the row
     """
 
-    x: int
-    y: int
-
     def __add__(self, other: "Coordinate") -> "Coordinate":
-        return Coordinate(self.x + other.x, self.y + other.y)
+        return Coordinate((self[0] + other[1], self[0] + other[1]))
 
     def __sub__(self, other: "Coordinate") -> "Coordinate":
-        return Coordinate(self.x - other.x, self.y - other.y)
+        return Coordinate((self[0] - other[1], self[0] - other[1]))
+
+    def subtract(self, other: tuple[int, int]) -> "Coordinate":
+        return Coordinate((self[0] - other[0], self[1] - other[1]))
+
+    def add(self, other: tuple[int, int]) -> "Coordinate":
+        return Coordinate((self[0] + other[0], self[1] + other[1]))
 
     def rotate(self, n: int = 1) -> "Coordinate":
         """
@@ -32,46 +34,31 @@ class Coordinate:
         """
         n = n % 4
 
-        """
-        if this is the grid:, we want to rotate it about the X
-        each dot represents a cell in the grid, the X is the center of rotation
-        
-        . .   . .
-        . .   . .
-            X
-        . .   . .
-        . .   . .    
-        
-        
-        """
-        x, y = self.x, self.y
+        x, y = self[0], self[1]
 
         for _ in range(n):
-            x, y = 5 - y, x
+            x, y = 3 - y, x
 
-        return Coordinate(x, y)
+        return Coordinate((x, y))
 
     def mirror(self) -> "Coordinate":
         """
         Mirror the coordinate across the x=2 line
         """
-        return Coordinate(5 - self.x, self.y)
+        return Coordinate((3 - self[0], self[1]))
 
     def is_in_bounds(self) -> bool:
         """
         Returns True if the coordinate is within the bounds of the 4x4 grid
         """
-        return 1 <= self.x <= 4 and 1 <= self.y <= 4
-
-    def tuple(self) -> tuple[int, int]:
-        return self.x, self.y
+        return 0 <= self[0] <= 3 and 0 <= self[1] <= 3
 
 
 OrientationDirections = [
-    Coordinate(0, 1),
-    Coordinate(1, 0),
-    Coordinate(0, -1),
-    Coordinate(1, 0),
+    Coordinate((0, 1)),
+    Coordinate((1, 0)),
+    Coordinate((0, -1)),
+    Coordinate((1, 0)),
 ]
 
 
