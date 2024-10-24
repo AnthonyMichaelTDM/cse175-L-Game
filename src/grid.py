@@ -67,12 +67,12 @@ class Grid:
             ]
         )
     )
-    red_position: LPiecePosition = LPiecePosition(Coordinate((2, 0)), Orientation.WEST)
-    blue_position: LPiecePosition = LPiecePosition(Coordinate((1, 3)), Orientation.EAST)
+    red_position: LPiecePosition = LPiecePosition(Coordinate(2, 0), Orientation.WEST)
+    blue_position: LPiecePosition = LPiecePosition(Coordinate(1, 3), Orientation.EAST)
     neutral_positions: tuple[NeutralPiecePosition, NeutralPiecePosition] = field(
         default_factory=lambda: (
-            NeutralPiecePosition(Coordinate((0, 0))),
-            NeutralPiecePosition(Coordinate((3, 3))),
+            NeutralPiecePosition(Coordinate(0, 0)),
+            NeutralPiecePosition(Coordinate(3, 3)),
         )
     )
 
@@ -91,23 +91,24 @@ class Grid:
             blue_position (LPiecePosition): the new position of the blue L-piece
             neutral_positions (tuple[NeutralPiecePosition, NeutralPiecePosition]): the new positions of the neutral pieces
         """
-        red_position = red_position
-        blue_position = blue_position
-        neutral_positions = neutral_positions
-
         grid = np.full((4, 4), GridCell.EMPTY)
 
-        grid[red_position.get_cells()] = GridCell.RED
-        grid[blue_position.get_cells()] = GridCell.BLUE
-        grid[neutral_positions[0].position] = GridCell.NEUTRAL
-        grid[neutral_positions[1].position] = GridCell.NEUTRAL
+        for cell in red_position.get_cells():
+            grid[cell.to_index()] = GridCell.RED
+        for cell in blue_position.get_cells():
+            grid[cell.to_index()] = GridCell.BLUE
+        grid[neutral_positions[0].position.to_index()] = GridCell.NEUTRAL
+        grid[neutral_positions[1].position.to_index()] = GridCell.NEUTRAL
 
-        return Grid(
+        grid = Grid(
             grid=grid,
             red_position=red_position,
             blue_position=blue_position,
             neutral_positions=neutral_positions,
         )
+        grid, rotated, mirrored = grid.normalize()
+
+        return grid
 
     def move_red(self, new_position: LPiecePosition):
         """
@@ -123,13 +124,15 @@ class Grid:
         # check if the new position is valid
         if any(
             not cell.is_in_bounds()
-            or not (self.grid[cell] == GridCell.EMPTY or GridCell.RED)
+            or not (self.grid[cell.to_index()] == GridCell.EMPTY or GridCell.RED)
             for cell in new_cells
         ):
             raise ValueError("Invalid position")
 
-        self.grid[old_cells] = GridCell.EMPTY
-        self.grid[new_cells] = GridCell.RED
+        for cell in old_cells:
+            self.grid[cell.to_index()] = GridCell.EMPTY
+        for cell in new_cells:
+            self.grid[cell.to_index()] = GridCell.RED
 
     def move_blue(self, new_position: LPiecePosition):
         """
@@ -146,13 +149,15 @@ class Grid:
         # check if the new position is valid
         if any(
             not cell.is_in_bounds()
-            or not (self.grid[cell] == GridCell.EMPTY or GridCell.BLUE)
+            or not (self.grid[cell.to_index()] == GridCell.EMPTY or GridCell.BLUE)
             for cell in new_cells
         ):
             raise ValueError("Invalid position")
 
-        self.grid[old_cells] = GridCell.EMPTY
-        self.grid[new_cells] = GridCell.BLUE
+        for cell in old_cells:
+            self.grid[cell] = GridCell.EMPTY
+        for cell in new_cells:
+            self.grid[cell] = GridCell.BLUE
 
     def move_neutral(
         self, old_position: NeutralPiecePosition, new_position: NeutralPiecePosition
@@ -172,8 +177,8 @@ class Grid:
         if (
             not old_cell.is_in_bounds()
             or not new_cell.is_in_bounds()
-            or self.grid[old_cell] != GridCell.NEUTRAL
-            or self.grid[new_cell] != GridCell.EMPTY
+            or self.grid[old_cell.to_index()] != GridCell.NEUTRAL
+            or self.grid[new_cell.to_index()] != GridCell.EMPTY
         ):
             raise ValueError("Invalid position")
 
@@ -212,11 +217,11 @@ class Grid:
 
         Returns the normalized grid, the number of times the grid was rotated, and whether the grid was mirrored
         """
-        n = -self.red_position.orientation.index() + Orientation.LENGTH()
+        n = Orientation.LENGTH() - self.red_position.orientation.index()
         grid = self.rotate(n)
 
         # check if we need to mirror the grid
-        if grid.red_position.corner[0] > 1:
+        if grid.red_position.corner.x > 1:
             return grid.mirror(), n, True
 
         return grid, n, False
