@@ -11,7 +11,7 @@ from action import (
     Orientation,
 )
 from agent import Agent
-from constants import is_terminal_state
+from constants import is_losing_state, is_terminal_state, is_winning_state
 from grid import Grid
 
 
@@ -150,7 +150,25 @@ class LGameState(GameState[LGameAction]):
         Returns:
             bool: True if the state is terminal, False otherwise
         """
-        return is_terminal_state(self.grid, self.red_to_move)
+        return is_terminal_state(self.grid)
+
+    def is_win(self) -> bool:
+        """
+        Check if the state is a winning state for the red player
+
+        Returns:
+            bool: True if the state is a winning state, False otherwise
+        """
+        return is_winning_state(self.grid, True)
+
+    def is_loss(self) -> bool:
+        """
+        Check if the state is a losing state for the red player
+
+        Returns:
+            bool: True if the state is a losing state, False otherwise
+        """
+        return is_losing_state(self.grid, True)
 
     def copy(self, **kwargs) -> "LGameState":
         """

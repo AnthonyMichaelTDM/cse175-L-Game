@@ -138,11 +138,25 @@ TERMINAL_STATES = [
 ]
 
 
-def is_terminal_state(grid: Grid, red_to_move: bool) -> bool:
+def is_losing_state(grid: Grid, red_to_move: bool = True) -> bool:
     """
-    Returns True if the grid is a terminal state
+    Returns True if the grid is a losing position for the player to move
     """
     if red_to_move:
         return grid.normalize()[0] in TERMINAL_STATES
     else:
         return __grid_swap_red_blue(grid).normalize()[0] in TERMINAL_STATES
+
+
+def is_winning_state(grid: Grid, red_to_move: bool = True) -> bool:
+    """
+    Returns True if the grid is a winning position for the player to move
+    """
+    return is_losing_state(grid, not red_to_move)
+
+
+def is_terminal_state(grid: Grid) -> bool:
+    """
+    Returns True if the grid is a terminal state
+    """
+    return is_losing_state(grid, True) or is_losing_state(grid, False)
