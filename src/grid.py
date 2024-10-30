@@ -255,3 +255,52 @@ class Grid:
                 )
             )
         )
+    
+    def get_red_legal_moves(self) -> list:
+        legal_moves = []
+        current_cells = self.red_position.get_cells()
+        # goes over all cell check for empty slots to fit a L with at most three overlaps
+        for x in range(4):
+            for y in range(4):
+                if self.grid[x, y] == GridCell.EMPTY:
+                    for orientation in [Orientation.NORTH, Orientation.EAST, Orientation.SOUTH, Orientation.WEST]:
+                        possible_position = LPiecePosition(
+                            Coordinate(x, y), orientation)
+                        new_cells = possible_position.get_cells()
+                        overlap_cell_count = sum(
+                            1 for cell in new_cells if cell in current_cells)
+                        on_empty_cell_count = sum(1 for cell in new_cells if cell.is_in_bounds(
+                        ) and self.grid[cell.to_index()] == GridCell.EMPTY)
+                        if overlap_cell_count < 4 and (overlap_cell_count+on_empty_cell_count == 4):
+                            legal_moves.append(possible_position)
+        return legal_moves
+
+    def get_blue_legal_moves(self) -> list:
+        legal_moves = []
+        current_cells = self.blue_position.get_cells()
+        # goes over all cell check for empty slots to fit a L with at most three overlaps
+        for x in range(4):
+            for y in range(4):
+                if self.grid[x, y] == GridCell.EMPTY: 
+                    for orientation in [Orientation.NORTH, Orientation.EAST, Orientation.SOUTH, Orientation.WEST]:
+                        possible_position = LPiecePosition(
+                            Coordinate(x, y), orientation)
+                        new_cells = possible_position.get_cells()
+                        overlap_cell_count = sum(
+                            1 for cell in new_cells if cell in current_cells)
+                        on_empty_cell_count = sum(1 for cell in new_cells if cell.is_in_bounds(
+                        ) and self.grid[cell.to_index()] == GridCell.EMPTY)
+                        if overlap_cell_count < 4 and (overlap_cell_count+on_empty_cell_count == 4):
+                            legal_moves.append(possible_position)
+        return legal_moves
+
+
+    def get_neutral_legal_moves(self) -> list:
+        legal_moves = []
+        for neutral in self.neutral_positions:
+            x,y=neutral.position.to_index()
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                new_neutral = NeutralPiecePosition(Coordinate(x+dx,y+dy))
+                if new_neutral.position.is_in_bounds():
+                    legal_moves.append([neutral,new_neutral])
+        return legal_moves

@@ -42,33 +42,10 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
             list: the legal moves for the L-piece
         """
         if state.red_to_move:
-            return self.get_red_legal_moves(state)
+            return state.grid.get_red_legal_moves()
         else:
-            return self.get_blue_legal_moves(state)
+            return state.grid.get_blue_legal_moves()
 
-    def get_red_legal_moves(self, state: LGameState) -> list:
-        """
-        Determine the legal moves for the red L-piece
-
-        Args:
-            state (LGameState): the current game state
-
-        Returns:
-            list: legal moves for the red L-piece
-        """
-        return state.grid.calculate_red_legal_moves()
-
-    def get_blue_legal_moves(self, state: LGameState) -> list:
-        """
-        Determine the legal moves for the blue L-piece
-
-        Args:
-            state (LGameState): the current game state
-
-        Returns:
-            list: legal moves for the blue L-piece
-        """
-        return state.grid.calculate_blue_legal_moves()
 
     def get_neutral_legal_moves(self, state: LGameState, l_piece_move) -> list:
         """
@@ -81,8 +58,19 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             list: legal moves for the neutral pieces based on the L-piece move
         """
-        return state.grid.calculate_neutral_legal_moves(l_piece_move)
-    ###
+        current_position = LPiecePosition(
+            state.grid.red_position.corner, state.grid.red_position.orientation
+        ) if red_to_move else LPiecePosition(
+            state.grid.blue_position.corner, state.grid.blue_position.orientation
+        )        
+        
+        move_function = state.grid.move_red if red_to_move else state.grid.move_blue
+
+        move_function(proposed_L_position)
+        legal_moves = state.grid.get_neutral_legal_moves()
+        move_function(current_position)
+        
+        return legal_moves   
     def apply_action(self, state: LGameState, action: LGameAction) -> LGameState:
         """
         Apply the specified action to the state
