@@ -81,5 +81,4 @@ def test_starting_state():
     rules = LGameRules()
     state = LGameState((MockAgent(), MockAgent()))
     state = state.normalize()
-    assert rules.get_legal_actions(state)
     assert len(rules.get_legal_actions(state)) == 65
