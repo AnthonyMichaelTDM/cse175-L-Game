@@ -22,19 +22,67 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             list[LGameAction]: the legal actions
         """
-        legal_actions =[]
-        if state.red_to_move:
-            moved_l_piece = state.grid.get_red_legal_moves()
-        else:
-            moved_l_piece = state.grid.get_blue_legal_moves()
-        neutral_piece_moves = state.grid.get_neutral_legal_moves()
-
-        for l_move in moved_l_piece:
+        legal_actions = []
+        l_piece_moves = self.get_l_piece_moves(state)
+        for l_move in l_piece_moves:
+            neutral_piece_moves = self.get_neutral_legal_moves(state, l_move)
             for neutral_move in neutral_piece_moves:
-                legal_actions.append(LGameAction(l_peice_move=l_move, neutral_peice_move=neutral_move))
+                legal_actions.append(LGameAction(l_piece_move=l_move, neutral_piece_move=neutral_move))
 
         return legal_actions
-    
+    ##
+    def get_l_piece_moves(self, state: LGameState) -> list:
+        """
+        Get legal moves for the current player's L-piece
+
+        Args:
+            state (LGameState): the current game state
+
+        Returns:
+            list: the legal moves for the L-piece
+        """
+        if state.red_to_move:
+            return self.get_red_legal_moves(state)
+        else:
+            return self.get_blue_legal_moves(state)
+
+    def get_red_legal_moves(self, state: LGameState) -> list:
+        """
+        Determine the legal moves for the red L-piece
+
+        Args:
+            state (LGameState): the current game state
+
+        Returns:
+            list: legal moves for the red L-piece
+        """
+        return state.grid.calculate_red_legal_moves()
+
+    def get_blue_legal_moves(self, state: LGameState) -> list:
+        """
+        Determine the legal moves for the blue L-piece
+
+        Args:
+            state (LGameState): the current game state
+
+        Returns:
+            list: legal moves for the blue L-piece
+        """
+        return state.grid.calculate_blue_legal_moves()
+
+    def get_neutral_legal_moves(self, state: LGameState, l_piece_move) -> list:
+        """
+        Determine the legal moves for the neutral pieces based on the L-piece move
+
+        Args:
+            state (LGameState): the current game state
+            l_piece_move: the selected move for the L-piece
+
+        Returns:
+            list: legal moves for the neutral pieces based on the L-piece move
+        """
+        return state.grid.calculate_neutral_legal_moves(l_piece_move)
+    ###
     def apply_action(self, state: LGameState, action: LGameAction) -> LGameState:
         """
         Apply the specified action to the state
