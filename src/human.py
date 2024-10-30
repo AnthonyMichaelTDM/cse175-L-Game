@@ -55,7 +55,7 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
             return self.get_action(state)
 
         # check if the action is legal
-        if action not in self.get_rules().get_legal_actions(state):
+        if action not in self.get_rules().get_legal_actions(state, self.id):
             print("Illegal move")
             return self.get_action(state)
 

@@ -4,6 +4,7 @@ Implementation of the rules of the game that all agents must follow
 
 from action import LGameAction, LPiecePosition
 from agent import AgentRules
+import agent
 from cell import GridCell
 from game import LGameState
 
@@ -13,7 +14,7 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
     The rules for the L-game, which all agents must follow
     """
 
-    def get_legal_actions(self, state: LGameState) -> list[LGameAction]:
+    def get_legal_actions(self, state: LGameState, agent_id: int) -> list[LGameAction]:
         """
         Get the legal actions for the given state, assuming it is the agent's turn
 
@@ -23,18 +24,21 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             list[LGameAction]: the legal actions
         """
-        l_piece_moves = self.get_l_piece_moves(state)
+        l_piece_moves = self.get_l_piece_moves(state, agent_id)
         if not l_piece_moves:
             return []
         legal_actions: list[LGameAction] = [
             LGameAction(l_move, neutral_move)
             for l_move in l_piece_moves
-            for neutral_move in self.get_neutral_legal_moves(state, l_move) + [None]
+            for neutral_move in self.get_neutral_legal_moves(state, l_move, agent_id)
+            + [None]
         ]
 
         return legal_actions
 
-    def get_l_piece_moves(self, state: LGameState) -> list[LPiecePosition] | None:
+    def get_l_piece_moves(
+        self, state: LGameState, agent_id: int
+    ) -> list[LPiecePosition] | None:
         """
         Get legal moves for the current player's L-piece
 
@@ -44,13 +48,13 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             list: the legal moves for the L-piece
         """
-        if state.red_to_move:
+        if agent_id == 0:
             return state.grid.get_red_legal_moves()
         else:
             return state.grid.get_blue_legal_moves()
 
     def get_neutral_legal_moves(
-        self, state: LGameState, proposed_l_move: LPiecePosition
+        self, state: LGameState, proposed_l_move: LPiecePosition, agent_id: int
     ) -> list:
         """
         Determine the legal moves for the neutral pieces based on the L-piece move, not including the option to move no neutral piece
@@ -62,13 +66,15 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             list: legal moves for the neutral pieces based on the L-piece move
         """
-        move_color = GridCell.RED if state.red_to_move else GridCell.BLUE
+        move_color = GridCell.RED if agent_id == 0 else GridCell.BLUE
 
         legal_moves = state.grid.get_neutral_legal_moves(proposed_l_move, move_color)
 
         return legal_moves
 
-    def apply_action(self, state: LGameState, action: LGameAction) -> LGameState:
+    def apply_action(
+        self, state: LGameState, action: LGameAction, agent_id: int
+    ) -> LGameState:
         """
         Apply the specified action to the state
 
@@ -80,7 +86,8 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
             LGameState: the new state after applying the action
         """
 
-        if state.red_to_move:
+        if agent_id == 0:
+
             new_state = state.copy(red_to_move=False)
             new_state.grid.move_red(action.l_piece_move)
         else:

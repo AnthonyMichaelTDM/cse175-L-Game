@@ -40,7 +40,9 @@ class AgentType(StrEnum):
         except ValueError:
             raise ValueError(f"Invalid agent type: {s}")
 
-    def get_agent(self, depth: int | None = None) -> Agent[LGameAction, LGameState]:
+    def get_agent(
+        self, id: int, depth: int | None = None
+    ) -> Agent[LGameAction, LGameState]:
         """
         Get an agent of the specified type
         """
@@ -48,7 +50,7 @@ class AgentType(StrEnum):
             case AgentType.HUMAN:
                 from human import HumanAgent
 
-                return HumanAgent()
+                return HumanAgent(id)
             case AgentType.MINIMAX:
                 return NotImplemented
                 # from computer import MinimaxAgent
@@ -85,8 +87,8 @@ if hasattr(args, "help"):
     exit()
 
 # create the agents
-player1 = args.p1.get_agent(args.d1 or args.d)
-player2 = args.p2.get_agent(args.d2 or args.d)
+player1 = args.p1.get_agent(0, args.d1 or args.d)
+player2 = args.p2.get_agent(1, args.d2 or args.d)
 
 # initialize the game
 game = LGame(LGameState((player1, player2)))

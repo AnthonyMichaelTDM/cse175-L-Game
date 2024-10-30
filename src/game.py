@@ -38,7 +38,7 @@ class GameState[Action](abc.ABC):
         if agent_id < 0 or agent_id >= len(self.agents):
             raise ValueError(f"Invalid agent ID: {agent_id}")
 
-        return self.agents[agent_id].get_rules().get_legal_actions(self)
+        return self.agents[agent_id].get_rules().get_legal_actions(self, agent_id)
 
     def generate_successor(self, action: Action, agent_id: int) -> Self:
         """
@@ -57,7 +57,12 @@ class GameState[Action](abc.ABC):
         if agent_id < 0 or agent_id >= len(self.agents):
             raise ValueError(f"Invalid agent ID: {agent_id}")
 
-        return self.agents[agent_id].get_rules().apply_action(self, action).normalize()
+        return (
+            self.agents[agent_id]
+            .get_rules()
+            .apply_action(self, action, agent_id)
+            .normalize()
+        )
 
     @abc.abstractmethod
     def normalize(self) -> Self:
@@ -95,7 +100,7 @@ class LGameState(GameState[LGameAction]):
     # the orientation to render the grid in (so that the view shown to the player is consistent)
     view_oriention: Orientation = Orientation.NORTH
     view_mirrored: bool = False
-    red_to_move: bool = True
+    # red_to_move: bool = True
 
     def render(self) -> str:
         """
@@ -185,7 +190,6 @@ class LGameState(GameState[LGameAction]):
             grid=self.grid,
             view_oriention=self.view_oriention,
             view_mirrored=self.view_mirrored,
-            red_to_move=self.red_to_move,
             **kwargs,
         )
 

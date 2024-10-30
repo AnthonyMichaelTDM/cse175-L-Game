@@ -2,6 +2,7 @@
 Tests for the rules module.
 """
 
+from dataclasses import dataclass
 from action import LGameAction
 from agent import Agent, AgentRules
 from game import LGameState
@@ -12,7 +13,7 @@ from constants import TERMINAL_STATES
 class MockAgent(Agent[LGameAction, LGameState]):
     def get_action(self, state: LGameState) -> LGameAction:
         """choose a random legal action"""
-        legal_actions = self.get_rules().get_legal_actions(state)
+        legal_actions = self.get_rules().get_legal_actions(state, self.id)
         return legal_actions[0]
 
     @classmethod
@@ -25,12 +26,12 @@ def test_terminal_states():
     Ensure that the get_legal_moves algorithm works as expected on all terminal states (returns no moves).
     """
     rules = LGameRules()
-    state = LGameState((MockAgent(), MockAgent()))
+    state = LGameState((MockAgent(0), MockAgent(1)))
 
     for grid in TERMINAL_STATES:
         state.grid = grid
         state = state.normalize()
-        assert not rules.get_legal_actions(state)
+        assert not rules.get_legal_actions(state, 0)
 
 
 def test_starting_state():
@@ -79,6 +80,6 @@ def test_starting_state():
     """
 
     rules = LGameRules()
-    state = LGameState((MockAgent(), MockAgent()))
+    state = LGameState((MockAgent(0), MockAgent(1)))
     state = state.normalize()
-    assert len(rules.get_legal_actions(state)) == 65
+    assert len(rules.get_legal_actions(state, 0)) == 65
