@@ -164,7 +164,7 @@ class LGameAction:
     An action in the L-game
     """
 
-    l_peice_move: LPiecePosition
-    neutral_peice_move: Optional[tuple[NeutralPiecePosition, NeutralPiecePosition]] = (
+    l_piece_move: LPiecePosition
+    neutral_piece_move: Optional[tuple[NeutralPiecePosition, NeutralPiecePosition]] = (
         None
     )

@@ -2,7 +2,7 @@
 Implementation of the rules of the game that all agents must follow
 """
 
-from action import LGameAction
+from action import LGameAction, LPiecePosition
 from agent import AgentRules
 from game import LGameState
 
@@ -27,10 +27,12 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         for l_move in l_piece_moves:
             neutral_piece_moves = self.get_neutral_legal_moves(state, l_move)
             for neutral_move in neutral_piece_moves:
-                legal_actions.append(LGameAction(l_piece_move=l_move, neutral_piece_move=neutral_move))
+                legal_actions.append(
+                    LGameAction(l_piece_move=l_move, neutral_piece_move=neutral_move)
+                )
 
         return legal_actions
-    ##
+
     def get_l_piece_moves(self, state: LGameState) -> list:
         """
         Get legal moves for the current player's L-piece
@@ -46,7 +48,6 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         else:
             return state.grid.get_blue_legal_moves()
 
-
     def get_neutral_legal_moves(self, state: LGameState, l_piece_move) -> list:
         """
         Determine the legal moves for the neutral pieces based on the L-piece move
@@ -58,19 +59,26 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             list: legal moves for the neutral pieces based on the L-piece move
         """
-        current_position = LPiecePosition(
-            state.grid.red_position.corner, state.grid.red_position.orientation
-        ) if red_to_move else LPiecePosition(
-            state.grid.blue_position.corner, state.grid.blue_position.orientation
-        )        
-        
-        move_function = state.grid.move_red if red_to_move else state.grid.move_blue
+        current_position = (
+            LPiecePosition(
+                state.grid.red_position.corner, state.grid.red_position.orientation
+            )
+            if state.red_to_move
+            else LPiecePosition(
+                state.grid.blue_position.corner, state.grid.blue_position.orientation
+            )
+        )
 
-        move_function(proposed_L_position)
+        move_function = (
+            state.grid.move_red if state.red_to_move else state.grid.move_blue
+        )
+
+        move_function(l_piece_move)
         legal_moves = state.grid.get_neutral_legal_moves()
         move_function(current_position)
-        
-        return legal_moves   
+
+        return legal_moves
+
     def apply_action(self, state: LGameState, action: LGameAction) -> LGameState:
         """
         Apply the specified action to the state
@@ -85,11 +93,11 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
 
         if state.red_to_move:
             new_state = state.copy(red_to_move=False)
-            new_state.grid.move_red(action.l_peice_move)
+            new_state.grid.move_red(action.l_piece_move)
         else:
             new_state = state.copy(red_to_move=True)
-            new_state.grid.move_blue(action.l_peice_move)
+            new_state.grid.move_blue(action.l_piece_move)
 
-        if action.neutral_peice_move:
-            new_state.grid.move_neutral(*action.neutral_peice_move)
+        if action.neutral_piece_move:
+            new_state.grid.move_neutral(*action.neutral_piece_move)
         return new_state
