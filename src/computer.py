@@ -26,6 +26,16 @@ class ComputerAgent(Agent[LGameAction, LGameState]):
         self.depth = depth
         self.evaluation_function = evaluation_function
 
+    @classmethod
+    def get_rules(cls) -> AgentRules[LGameAction, LGameState]:
+        """
+        Get the rules for this agent
+
+        Returns:
+            AgentRules[LGameAction, LGameState]: the rules for the agent
+        """
+        return LGameRules()
+
 
 class MinimaxAgent(ComputerAgent):
     """
@@ -87,16 +97,6 @@ class MinimaxAgent(ComputerAgent):
             if max_value < min_value:
                 min_value, best_action = max_value, action
         return (min_value, best_action)
-
-    @classmethod
-    def get_rules(cls) -> AgentRules[LGameAction, LGameState]:
-        """
-        Get the rules for the minimax
-
-        Returns:
-            AgentRules[LGameAction, LGameState]: the rules for the agent
-        """
-        return LGameRules()
 
 
 class AlphaBetaAgent(ComputerAgent):
@@ -170,13 +170,3 @@ class AlphaBetaAgent(ComputerAgent):
             if value < alpha:
                 return (value, best_action)
         return (value, best_action)
-
-    @classmethod
-    def get_rules(cls) -> AgentRules[LGameAction, LGameState]:
-        """
-        Get the rules for the minimax
-
-        Returns:
-            AgentRules[LGameAction, LGameState]: the rules for the agent
-        """
-        return LGameRules()
