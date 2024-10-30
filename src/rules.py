@@ -25,6 +25,9 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         legal_actions = []
         l_piece_moves = self.get_l_piece_moves(state)
         for l_move in l_piece_moves:
+            legal_actions.append(
+                LGameAction(l_piece_move=l_move, neutral_piece_move=None)
+            )
             neutral_piece_moves = self.get_neutral_legal_moves(state, l_move)
             for neutral_move in neutral_piece_moves:
                 legal_actions.append(
