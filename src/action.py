@@ -104,6 +104,12 @@ class LPiecePosition:
     corner: Coordinate
     orientation: Orientation
 
+    def __post_init__(self):
+        if not self.corner.is_in_bounds():
+            raise ValueError("Corner must be in bounds")
+        if not (self.corner + self.orientation.direction()).is_in_bounds():
+            raise ValueError("Foot must be in bounds")
+
     def get_cells(self) -> list[Coordinate]:
         """
         Get the coordinates of all cells occupied by the L-piece
@@ -144,6 +150,10 @@ class NeutralPiecePosition:
     """
 
     position: Coordinate
+
+    def __post_init__(self):
+        if not self.position.is_in_bounds():
+            raise ValueError("Position must be in bounds")
 
     def rotate(self, n: int = 1) -> "NeutralPiecePosition":
         """
