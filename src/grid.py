@@ -268,15 +268,11 @@ class Grid:
         # then remove the "current" red position from that list (because you can't move to the same position)
         # then return the list of possible positions, or None if that list is empty
 
-        legal_moves = []
-
-        for position, mask in ALL_VALID_LPIECE_POSITIONS_GRID_MASKS.items():
-            if position == self.red_position:
-                continue
-            if self.is_mask_valid(mask, GridCell.RED):
-                legal_moves.append(position)
-
-        return legal_moves if legal_moves else None
+        return [
+            position
+            for position, mask in ALL_VALID_LPIECE_POSITIONS_GRID_MASKS.items()
+            if self.is_mask_valid(mask, GridCell.RED) and position != self.red_position
+        ]
 
     def get_blue_legal_moves(self) -> list[LPiecePosition] | None:
         """Get the legal moves for the blue L-piece
@@ -284,15 +280,12 @@ class Grid:
         Returns:
             list[LPiecePosition] | None: a list of all possible moves for the blue L-piece, or None if there are no legal moves
         """
-        legal_moves = []
-
-        for position, mask in ALL_VALID_LPIECE_POSITIONS_GRID_MASKS.items():
-            if position == self.blue_position:
-                continue
-            if self.is_mask_valid(mask, GridCell.BLUE):
-                legal_moves.append(position)
-
-        return legal_moves if legal_moves else None
+        return [
+            position
+            for position, mask in ALL_VALID_LPIECE_POSITIONS_GRID_MASKS.items()
+            if self.is_mask_valid(mask, GridCell.BLUE)
+            and position != self.blue_position
+        ]
 
     def get_neutral_legal_moves(
         self, proposed_l_move: LPiecePosition, color: GridCell
