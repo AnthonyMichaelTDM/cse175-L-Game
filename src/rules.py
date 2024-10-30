@@ -4,6 +4,7 @@ Implementation of the rules of the game that all agents must follow
 
 from action import LGameAction, LPiecePosition
 from agent import AgentRules
+from cell import GridCell
 from game import LGameState
 
 
@@ -22,8 +23,11 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             list[LGameAction]: the legal actions
         """
-        legal_actions = []
+        legal_actions: list[LGameAction] = []
         l_piece_moves = self.get_l_piece_moves(state)
+        if not l_piece_moves:
+            return legal_actions
+
         for l_move in l_piece_moves:
             legal_actions.append(
                 LGameAction(l_piece_move=l_move, neutral_piece_move=None)
@@ -36,7 +40,7 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
 
         return legal_actions
 
-    def get_l_piece_moves(self, state: LGameState) -> list:
+    def get_l_piece_moves(self, state: LGameState) -> list[LPiecePosition] | None:
         """
         Get legal moves for the current player's L-piece
 
@@ -55,7 +59,7 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         self, state: LGameState, proposed_l_move: LPiecePosition
     ) -> list:
         """
-        Determine the legal moves for the neutral pieces based on the L-piece move
+        Determine the legal moves for the neutral pieces based on the L-piece move, not including the option to move no neutral piece
 
         Args:
             state (LGameState): the current game state
@@ -64,23 +68,9 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             list: legal moves for the neutral pieces based on the L-piece move
         """
-        current_position = (
-            LPiecePosition(
-                state.grid.red_position.corner, state.grid.red_position.orientation
-            )
-            if state.red_to_move
-            else LPiecePosition(
-                state.grid.blue_position.corner, state.grid.blue_position.orientation
-            )
-        )
+        move_color = GridCell.RED if state.red_to_move else GridCell.BLUE
 
-        move_function = (
-            state.grid.move_red if state.red_to_move else state.grid.move_blue
-        )
-
-        move_function(proposed_l_move)
-        legal_moves = state.grid.get_neutral_legal_moves()
-        move_function(current_position)
+        legal_moves = state.grid.get_neutral_legal_moves(proposed_l_move, move_color)
 
         return legal_moves
 

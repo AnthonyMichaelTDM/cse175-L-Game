@@ -258,76 +258,77 @@ class Grid:
             )
         )
 
-    def get_red_legal_moves(self) -> list:
-        legal_moves = []
-        current_cells = self.red_position.get_cells()
-        # goes over all cell check for empty slots to fit a L with at most three overlaps
-        for x in range(4):
-            for y in range(4):
-                if self.grid[x, y] == GridCell.EMPTY:
-                    for orientation in [
-                        Orientation.NORTH,
-                        Orientation.EAST,
-                        Orientation.SOUTH,
-                        Orientation.WEST,
-                    ]:
-                        possible_position = LPiecePosition(
-                            Coordinate(x, y), orientation
-                        )
-                        new_cells = possible_position.get_cells()
-                        overlap_cell_count = sum(
-                            1 for cell in new_cells if cell in current_cells
-                        )
-                        on_empty_cell_count = sum(
-                            1
-                            for cell in new_cells
-                            if cell.is_in_bounds()
-                            and self.grid[cell.to_index()] == GridCell.EMPTY
-                        )
-                        if overlap_cell_count < 4 and (
-                            overlap_cell_count + on_empty_cell_count == 4
-                        ):
-                            legal_moves.append(possible_position)
-        return legal_moves
+    def get_red_legal_moves(self) -> list[LPiecePosition] | None:
+        """Get the legal moves for the red L-piece
 
-    def get_blue_legal_moves(self) -> list:
-        legal_moves = []
-        current_cells = self.blue_position.get_cells()
-        # goes over all cell check for empty slots to fit a L with at most three overlaps
-        for x in range(4):
-            for y in range(4):
-                if self.grid[x, y] == GridCell.EMPTY:
-                    for orientation in [
-                        Orientation.NORTH,
-                        Orientation.EAST,
-                        Orientation.SOUTH,
-                        Orientation.WEST,
-                    ]:
-                        possible_position = LPiecePosition(
-                            Coordinate(x, y), orientation
-                        )
-                        new_cells = possible_position.get_cells()
-                        overlap_cell_count = sum(
-                            1 for cell in new_cells if cell in current_cells
-                        )
-                        on_empty_cell_count = sum(
-                            1
-                            for cell in new_cells
-                            if cell.is_in_bounds()
-                            and self.grid[cell.to_index()] == GridCell.EMPTY
-                        )
-                        if overlap_cell_count < 4 and (
-                            overlap_cell_count + on_empty_cell_count == 4
-                        ):
-                            legal_moves.append(possible_position)
-        return legal_moves
+        Returns:
+            list[LPiecePosition] | None: a list of all possible moves for the red L-piece, or None if there are no legal moves
+        """
+        # Idea: remove the L piece from the grid, then check all possible positions for the L piece to see if it fits
+        # then remove the "current" red position from that list (because you can't move to the same position)
+        # then return the list of possible positions, or None if that list is empty
 
-    def get_neutral_legal_moves(self) -> list:
         legal_moves = []
-        for neutral in self.neutral_positions:
-            x, y = neutral.position.to_index()
-            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                new_neutral = NeutralPiecePosition(Coordinate(x + dx, y + dy))
-                if new_neutral.position.is_in_bounds():
-                    legal_moves.append([neutral, new_neutral])
+
+        for position, mask in ALL_VALID_LPIECE_POSITIONS_GRID_MASKS.items():
+            if position == self.red_position:
+                continue
+            if self.is_mask_valid(mask, GridCell.RED):
+                legal_moves.append(position)
+
+        return legal_moves if legal_moves else None
+
+    def get_blue_legal_moves(self) -> list[LPiecePosition] | None:
+        """Get the legal moves for the blue L-piece
+
+        Returns:
+            list[LPiecePosition] | None: a list of all possible moves for the blue L-piece, or None if there are no legal moves
+        """
+        legal_moves = []
+
+        for position, mask in ALL_VALID_LPIECE_POSITIONS_GRID_MASKS.items():
+            if position == self.blue_position:
+                continue
+            if self.is_mask_valid(mask, GridCell.BLUE):
+                legal_moves.append(position)
+
+        return legal_moves if legal_moves else None
+
+    def get_neutral_legal_moves(
+        self, proposed_l_move: LPiecePosition, color: GridCell
+    ) -> list[Tuple[NeutralPiecePosition, NeutralPiecePosition]]:
+        """returns a list of all possible moves for the neutral pieces, not including the option to not move any, given the proposed move for the L-piece
+
+        Args:
+            proposed_l_move (LPiecePosition): the proposed move for the L-piece
+            color (GridCell): the color of the L-piece that moved
+
+        Returns:
+            list[Tuple[NeutralPiecePosition, NeutralPiecePosition]]: a list of all possible moves for the neutral pieces
+        """
+
+        empty_cells = np.nonzero(
+            (
+                (
+                    self.grid
+                    - (
+                        self.red_position.grid_mask(color)
+                        if color == GridCell.RED
+                        else self.blue_position.grid_mask(color)
+                    )
+                    + proposed_l_move.grid_mask(color)
+                )
+                == GridCell.EMPTY
+            )
+        )
+
+        legal_moves: list[Tuple[NeutralPiecePosition, NeutralPiecePosition]] = [
+            (neutral, NeutralPiecePosition(Coordinate(x, y)))
+            for x, y in zip(*empty_cells)
+            for neutral in self.neutral_positions
+        ]
+
+        if STRICT_MOVES:
+            assert len(legal_moves) == 12, "Invalid number of legal moves"
+
         return legal_moves
