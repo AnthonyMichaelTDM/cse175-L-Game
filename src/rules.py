@@ -23,20 +23,14 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             list[LGameAction]: the legal actions
         """
-        legal_actions: list[LGameAction] = []
         l_piece_moves = self.get_l_piece_moves(state)
         if not l_piece_moves:
-            return legal_actions
-
-        for l_move in l_piece_moves:
-            legal_actions.append(
-                LGameAction(l_piece_move=l_move, neutral_piece_move=None)
-            )
-            neutral_piece_moves = self.get_neutral_legal_moves(state, l_move)
-            for neutral_move in neutral_piece_moves:
-                legal_actions.append(
-                    LGameAction(l_piece_move=l_move, neutral_piece_move=neutral_move)
-                )
+            return []
+        legal_actions: list[LGameAction] = [
+            LGameAction(l_move, neutral_move)
+            for l_move in l_piece_moves
+            for neutral_move in self.get_neutral_legal_moves(state, l_move) + [None]
+        ]
 
         return legal_actions
 
