@@ -137,3 +137,68 @@ x x x .
 + . # .
 + + + #"""
     assert grid.render() == expected
+
+
+def test_mask_checks():
+    grid = Grid()
+    """
+    grid state:
+    # + + .
+    . x + .
+    . x + .
+    . x x #
+    """
+
+    some_valid_masks = [
+        (
+            LPiecePosition(Coordinate(3, 0), Orientation.SOUTH).grid_mask(GridCell.RED),
+            GridCell.RED,
+        ),
+        (
+            LPiecePosition(Coordinate(3, 2), Orientation.WEST).grid_mask(GridCell.RED),
+            GridCell.RED,
+        ),
+        (
+            LPiecePosition(Coordinate(0, 1), Orientation.EAST).grid_mask(GridCell.BLUE),
+            GridCell.BLUE,
+        ),
+        (
+            LPiecePosition(Coordinate(0, 3), Orientation.NORTH).grid_mask(
+                GridCell.BLUE
+            ),
+            GridCell.BLUE,
+        ),
+        (NeutralPiecePosition(Coordinate(0, 1)).grid_mask(), GridCell.NEUTRAL),
+    ]
+
+    for mask, color in some_valid_masks:
+        assert grid.is_mask_valid(
+            mask, color
+        ), f"mask: {mask} should be valid for {str(grid)}"
+
+    some_invalid_masks = [
+        (
+            LPiecePosition(Coordinate(0, 2), Orientation.EAST).grid_mask(GridCell.RED),
+            GridCell.RED,
+        ),
+        (
+            LPiecePosition(Coordinate(3, 2), Orientation.SOUTH).grid_mask(GridCell.RED),
+            GridCell.RED,
+        ),
+        (
+            LPiecePosition(Coordinate(0, 0), Orientation.SOUTH).grid_mask(
+                GridCell.BLUE
+            ),
+            GridCell.BLUE,
+        ),
+        (
+            LPiecePosition(Coordinate(2, 3), Orientation.EAST).grid_mask(GridCell.BLUE),
+            GridCell.BLUE,
+        ),
+        (NeutralPiecePosition(Coordinate(1, 0)).grid_mask(), GridCell.NEUTRAL),
+    ]
+
+    for mask, color in some_invalid_masks:
+        assert not grid.is_mask_valid(
+            mask, color
+        ), f"mask: {mask} should be valid for {str(grid)}"
