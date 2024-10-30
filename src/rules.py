@@ -51,7 +51,9 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         else:
             return state.grid.get_blue_legal_moves()
 
-    def get_neutral_legal_moves(self, state: LGameState, l_piece_move) -> list:
+    def get_neutral_legal_moves(
+        self, state: LGameState, proposed_l_move: LPiecePosition
+    ) -> list:
         """
         Determine the legal moves for the neutral pieces based on the L-piece move
 
@@ -76,7 +78,7 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
             state.grid.move_red if state.red_to_move else state.grid.move_blue
         )
 
-        move_function(l_piece_move)
+        move_function(proposed_l_move)
         legal_moves = state.grid.get_neutral_legal_moves()
         move_function(current_position)
 
