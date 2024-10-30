@@ -5,6 +5,9 @@ Code for actions in the game
 from dataclasses import dataclass
 from typing import Optional
 
+import numpy as np
+from cell import GridCell
+
 from util import IndexableEnum
 
 
@@ -110,25 +113,32 @@ class LPiecePosition:
         if not (self.corner + self.orientation.direction()).is_in_bounds():
             raise ValueError("Foot must be in bounds")
 
-    def get_cells(self) -> list[Coordinate]:
+    def grid_mask(self, color: GridCell) -> np.ndarray:
         """
-        Get the coordinates of all cells occupied by the L-piece
-        in order: foot, corner, head1, head2
+        Returns a 4x4 grid mask of the L-piece
         """
+        grid = np.full((4, 4), GridCell.EMPTY)
+
+        # color corner and foot
         corner = self.corner
-        foot = corner + self.orientation.direction()
+        grid[corner.to_index()] = color
+        grid[(corner + self.orientation.direction()).to_index()] = color
+
+        # color head1 and head2
         head_direction = (
             direction
             if (
-                self.corner
+                corner
                 + (direction := self.orientation.rotate(1).direction())
                 + direction
             ).is_in_bounds()
             else self.orientation.rotate(-1).direction()
         )
         head1 = corner + head_direction
-        head2 = head1 + head_direction
-        return [foot, self.corner, head1, head2]
+        grid[head1.to_index()] = color
+        grid[(head1 + head_direction).to_index()] = color
+
+        return grid
 
     def rotate(self, n: int = 1) -> "LPiecePosition":
         """
@@ -141,6 +151,19 @@ class LPiecePosition:
         Mirror the L-piece across the x=2 line
         """
         return LPiecePosition(self.corner.mirror(), self.orientation)
+
+
+# Precompute all valid L-piece positions (4x4 grid)
+ALL_VALID_LPIECE_POSITIONS: list[LPiecePosition] = [
+    LPiecePosition(coord, Orientation(o))
+    for coord in [Coordinate(x, y) for x in range(4) for y in range(4)]
+    for o in Orientation
+    if (coord + o.direction()).is_in_bounds()
+]
+# Precompute the grid masks for all valid L-piece positions
+ALL_VALID_LPIECE_POSITIONS_GRID_MASKS: dict[LPiecePosition, np.ndarray] = {
+    pos: pos.grid_mask(GridCell.RED) for pos in ALL_VALID_LPIECE_POSITIONS
+}
 
 
 @dataclass(frozen=True)
@@ -166,6 +189,14 @@ class NeutralPiecePosition:
         Mirror the neutral piece across the x=2 line
         """
         return NeutralPiecePosition(self.position.mirror())
+
+    def grid_mask(self) -> np.ndarray:
+        """
+        Returns a 4x4 grid mask of the neutral piece
+        """
+        grid = np.full((4, 4), GridCell.EMPTY)
+        grid[self.position.to_index()] = GridCell.NEUTRAL
+        return grid
 
 
 @dataclass(frozen=True)

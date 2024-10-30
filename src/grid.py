@@ -3,16 +3,20 @@ Code for the game grid
 """
 
 from dataclasses import dataclass, field
+from typing import Optional, Tuple
 import numpy as np
 
 from cell import GridCell
 
 from action import (
+    ALL_VALID_LPIECE_POSITIONS_GRID_MASKS,
     Coordinate,
     LPiecePosition,
     NeutralPiecePosition,
     Orientation,
 )
+
+STRICT_MOVES = True
 
 
 @dataclass
@@ -73,24 +77,48 @@ class Grid:
             blue_position (LPiecePosition): the new position of the blue L-piece
             neutral_positions (tuple[NeutralPiecePosition, NeutralPiecePosition]): the new positions of the neutral pieces
         """
-        grid = np.full((4, 4), GridCell.EMPTY)
+        inner_grid = np.full((4, 4), GridCell.EMPTY)
 
-        for cell in red_position.get_cells():
-            grid[cell.to_index()] = GridCell.RED
-        for cell in blue_position.get_cells():
-            grid[cell.to_index()] = GridCell.BLUE
-        grid[neutral_positions[0].position.to_index()] = GridCell.NEUTRAL
-        grid[neutral_positions[1].position.to_index()] = GridCell.NEUTRAL
+        inner_grid += red_position.grid_mask(GridCell.RED)
+        inner_grid += blue_position.grid_mask(GridCell.BLUE)
+        inner_grid += neutral_positions[0].grid_mask()
+        inner_grid += neutral_positions[1].grid_mask()
 
         grid = Grid(
-            grid=grid,
+            grid=inner_grid,
             red_position=red_position,
             blue_position=blue_position,
             neutral_positions=neutral_positions,
         )
-        grid, rotated, mirrored = grid.normalize()
+        grid, _, _ = grid.normalize()
 
         return grid
+
+    def is_mask_valid(self, mask: np.ndarray, color: GridCell) -> bool:
+        """
+        Assert that for every non-Empty cell in the grid mask, the corresponding cell in the grid is either color or empty
+
+        Let l be the proposition that the cell in the grid is color or empty
+        Let r be the proposition that the cell in the grid mask is color
+
+        we want to assert that for all cells in the grid, the proposition (l | r) == l is true
+
+        This has the following truth table:
+
+        | l | r | result |
+        |---|---|--------|
+        | 0 | 0 | 1      |
+        | 0 | 1 | 0      |
+        | 1 | 0 | 1      |
+        | 1 | 1 | 1      |
+        """
+        l = self.grid & (GridCell.EMPTY.value | color.value)
+        r = mask & color
+        result = l | r
+        result = result.astype(bool)
+        result = result == l.astype(bool)
+        result = bool(np.all(result))
+        return result
 
     def move_red(self, new_position: LPiecePosition):
         """
@@ -99,22 +127,16 @@ class Grid:
         Args:
             new_position (LPiecePosition): the new position of the red L-piece
         """
-        old_position = self.red_position or None
-        old_cells = old_position.get_cells() if old_position else []
-        new_cells = new_position.get_cells()
+        if STRICT_MOVES:
+            assert self.is_mask_valid(
+                new_position.grid_mask(GridCell.RED), GridCell.RED
+            ), "Invalid move, can't move to a non-empty cell"
 
-        # check if the new position is valid
-        if any(
-            not cell.is_in_bounds()
-            or not (self.grid[cell.to_index()] == GridCell.EMPTY or GridCell.RED)
-            for cell in new_cells
-        ):
-            raise ValueError("Invalid position")
-
-        for cell in old_cells:
-            self.grid[cell.to_index()] = GridCell.EMPTY
-        for cell in new_cells:
-            self.grid[cell.to_index()] = GridCell.RED
+        if self.red_position is not None:
+            if self.red_position == new_position:
+                raise ValueError("Invalid move, can't move to the same position")
+            self.grid = self.grid - self.red_position.grid_mask(GridCell.RED)
+        self.grid = self.grid + new_position.grid_mask(GridCell.RED)
 
     def move_blue(self, new_position: LPiecePosition):
         """
@@ -123,23 +145,17 @@ class Grid:
         Args:
             new_position (LPiecePosition): the new position of the blue L-piece
         """
+        # assert that for every non-Empty cell in the grid mask, the corresponding cell in the grid is either blue or empty
+        if STRICT_MOVES:
+            assert self.is_mask_valid(
+                new_position.grid_mask(GridCell.BLUE), GridCell.BLUE
+            ), "Invalid move, can't move to a non-empty cell"
 
-        old_position = self.blue_position or None
-        old_cells = old_position.get_cells() if old_position else []
-        new_cells = new_position.get_cells()
-
-        # check if the new position is valid
-        if any(
-            not cell.is_in_bounds()
-            or not (self.grid[cell.to_index()] == GridCell.EMPTY or GridCell.BLUE)
-            for cell in new_cells
-        ):
-            raise ValueError("Invalid position")
-
-        for cell in old_cells:
-            self.grid[cell] = GridCell.EMPTY
-        for cell in new_cells:
-            self.grid[cell] = GridCell.BLUE
+        if self.blue_position is not None:
+            if self.blue_position == new_position:
+                raise ValueError("Invalid move, can't move to the same position")
+            self.grid = self.grid - self.blue_position.grid_mask(GridCell.BLUE)
+        self.grid = self.grid + new_position.grid_mask(GridCell.BLUE)
 
     def move_neutral(
         self, old_position: NeutralPiecePosition, new_position: NeutralPiecePosition
@@ -152,20 +168,15 @@ class Grid:
             new_position (NeutralPiecePosition): the new position of the neutral piece
         """
 
-        old_cell = old_position.position
-        new_cell = new_position.position
+        assert (
+            self.grid[old_position.position.to_index()] == GridCell.NEUTRAL
+        ), "Invalid move, can't move a non-neutral piece"
+        if STRICT_MOVES:
+            assert (
+                self.grid[new_position.position.to_index()] == GridCell.EMPTY
+            ), "Invalid move, can't move to a non-empty cell"
 
-        # check if the new position is valid
-        if (
-            not old_cell.is_in_bounds()
-            or not new_cell.is_in_bounds()
-            or self.grid[old_cell.to_index()] != GridCell.NEUTRAL
-            or self.grid[new_cell.to_index()] != GridCell.EMPTY
-        ):
-            raise ValueError("Invalid position")
-
-        self.grid[old_cell] = GridCell.EMPTY
-        self.grid[new_cell] = GridCell.NEUTRAL
+        self.grid = self.grid - old_position.grid_mask() + new_position.grid_mask()
 
     def render(self) -> str:
         """
