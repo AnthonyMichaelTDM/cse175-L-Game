@@ -3,7 +3,8 @@ Tests for the grid module.
 """
 
 from action import Coordinate, LPiecePosition, NeutralPiecePosition, Orientation
-from grid import Grid, GridCell
+from grid import Grid
+from cell import GridCell
 
 
 def test_cell_chars():
