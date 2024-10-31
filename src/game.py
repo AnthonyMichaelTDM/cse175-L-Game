@@ -215,6 +215,9 @@ class LGame:
             # generate the successor state
             new_state = new_state.generate_successor(action, i)
             # TODO: do something special if the state is terminal (e.g., print the winner)
+            if new_state.is_terminal():
+                print("Game over")
+                return new_state
 
             # render the new state
             print(new_state.render())

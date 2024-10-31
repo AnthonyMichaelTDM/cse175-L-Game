@@ -30,8 +30,11 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         legal_actions: list[LGameAction] = [
             LGameAction(l_move, neutral_move)
             for l_move in l_piece_moves
-            for neutral_move in self.get_neutral_legal_moves(state, l_move, agent_id)
-            + [None]
+            if l_move
+            != (state.grid.red_position if agent_id == 0 else state.grid.blue_position)
+            for neutral_move in (
+                self.get_neutral_legal_moves(state, l_move, agent_id) + [None]
+            )
         ]
 
         return legal_actions
@@ -85,13 +88,11 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             LGameState: the new state after applying the action
         """
+        new_state = state.copy()
 
         if agent_id == 0:
-
-            new_state = state.copy(red_to_move=False)
             new_state.grid.move_red(action.l_piece_move)
         else:
-            new_state = state.copy(red_to_move=True)
             new_state.grid.move_blue(action.l_piece_move)
 
         if action.neutral_piece_move:

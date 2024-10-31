@@ -89,6 +89,16 @@ class Orientation(IndexableEnum):
 
         return Orientation.from_index((int(self) + n) % 4)
 
+    def mirror(self) -> "Orientation":
+        """
+        Mirror the orientation across the x=2 line
+        """
+        return (
+            self
+            if self == Orientation.NORTH or self == Orientation.SOUTH
+            else self.rotate(2)
+        )
+
     def direction(self) -> Coordinate:
         return OrientationDirections[int(self)]
 
@@ -150,7 +160,7 @@ class LPiecePosition:
         """
         Mirror the L-piece across the x=2 line
         """
-        return LPiecePosition(self.corner.mirror(), self.orientation)
+        return LPiecePosition(self.corner.mirror(), self.orientation.mirror())
 
 
 # Precompute all valid L-piece positions (4x4 grid)
@@ -161,8 +171,15 @@ ALL_VALID_LPIECE_POSITIONS: list[LPiecePosition] = [
     if (coord + o.direction()).is_in_bounds()
 ]
 # Precompute the grid masks for all valid L-piece positions
-ALL_VALID_LPIECE_POSITIONS_GRID_MASKS: dict[LPiecePosition, np.ndarray] = {
-    pos: pos.grid_mask(GridCell.RED) for pos in ALL_VALID_LPIECE_POSITIONS
+ALL_VALID_LPIECE_POSITIONS_GRID_MASKS: dict[
+    GridCell, dict[LPiecePosition, np.ndarray]
+] = {
+    GridCell.RED: {
+        pos: pos.grid_mask(GridCell.RED) for pos in ALL_VALID_LPIECE_POSITIONS
+    },
+    GridCell.BLUE: {
+        pos: pos.grid_mask(GridCell.BLUE) for pos in ALL_VALID_LPIECE_POSITIONS
+    },
 }
 
 

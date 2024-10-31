@@ -112,12 +112,11 @@ class Grid:
         | 1 | 0 | 1      |
         | 1 | 1 | 1      |
         """
-        l = self.grid & (GridCell.EMPTY.value | color.value)
+        l = self.grid & (GridCell.EMPTY | color)
         r = mask & color
-        result = l | r
-        result = result.astype(bool)
-        result = result == l.astype(bool)
+        result = (l | r).astype(bool) == l.astype(bool)
         result = bool(np.all(result))
+
         return result
 
     def move_red(self, new_position: LPiecePosition):
@@ -138,6 +137,8 @@ class Grid:
             self.grid = self.grid - self.red_position.grid_mask(GridCell.RED)
         self.grid = self.grid + new_position.grid_mask(GridCell.RED)
 
+        self.red_position = new_position
+
     def move_blue(self, new_position: LPiecePosition):
         """
         Move the blue L-piece to the new position
@@ -154,8 +155,11 @@ class Grid:
         if self.blue_position is not None:
             if self.blue_position == new_position:
                 raise ValueError("Invalid move, can't move to the same position")
+                # pass
             self.grid = self.grid - self.blue_position.grid_mask(GridCell.BLUE)
         self.grid = self.grid + new_position.grid_mask(GridCell.BLUE)
+
+        self.blue_position = new_position
 
     def move_neutral(
         self, old_position: NeutralPiecePosition, new_position: NeutralPiecePosition
@@ -177,6 +181,11 @@ class Grid:
             ), "Invalid move, can't move to a non-empty cell"
 
         self.grid = self.grid - old_position.grid_mask() + new_position.grid_mask()
+
+        if self.neutral_positions[0] == old_position:
+            self.neutral_positions = (new_position, self.neutral_positions[1])
+        elif self.neutral_positions[1] == old_position:
+            self.neutral_positions = (self.neutral_positions[0], new_position)
 
     def render(self) -> str:
         """
@@ -267,12 +276,14 @@ class Grid:
         # Idea: remove the L piece from the grid, then check all possible positions for the L piece to see if it fits
         # then remove the "current" red position from that list (because you can't move to the same position)
         # then return the list of possible positions, or None if that list is empty
-
-        return [
+        legal_moves = [
             position
-            for position, mask in ALL_VALID_LPIECE_POSITIONS_GRID_MASKS.items()
-            if self.is_mask_valid(mask, GridCell.RED) and position != self.red_position
+            for position, mask in ALL_VALID_LPIECE_POSITIONS_GRID_MASKS[
+                GridCell.RED
+            ].items()
+            if position != self.red_position and self.is_mask_valid(mask, GridCell.RED)
         ]
+        return legal_moves if legal_moves else None
 
     def get_blue_legal_moves(self) -> list[LPiecePosition] | None:
         """Get the legal moves for the blue L-piece
@@ -280,12 +291,15 @@ class Grid:
         Returns:
             list[LPiecePosition] | None: a list of all possible moves for the blue L-piece, or None if there are no legal moves
         """
-        return [
+        legal_moves = [
             position
-            for position, mask in ALL_VALID_LPIECE_POSITIONS_GRID_MASKS.items()
-            if self.is_mask_valid(mask, GridCell.BLUE)
-            and position != self.blue_position
+            for position, mask in ALL_VALID_LPIECE_POSITIONS_GRID_MASKS[
+                GridCell.BLUE
+            ].items()
+            if position != self.blue_position
+            and self.is_mask_valid(mask, GridCell.BLUE)
         ]
+        return legal_moves if legal_moves else None
 
     def get_neutral_legal_moves(
         self, proposed_l_move: LPiecePosition, color: GridCell
@@ -299,29 +313,25 @@ class Grid:
         Returns:
             list[Tuple[NeutralPiecePosition, NeutralPiecePosition]]: a list of all possible moves for the neutral pieces
         """
+        assert color in (GridCell.RED, GridCell.BLUE), "Invalid color"
+        piece = self.red_position if color == GridCell.RED else self.blue_position
 
-        empty_cells = np.nonzero(
-            (
-                (
-                    self.grid
-                    - (
-                        self.red_position.grid_mask(color)
-                        if color == GridCell.RED
-                        else self.blue_position.grid_mask(color)
-                    )
-                    + proposed_l_move.grid_mask(color)
-                )
-                == GridCell.EMPTY
-            )
+        # this is in row major order, but we need it in column major order
+        empty_cells = np.argwhere(
+            (self.grid - piece.grid_mask(color) + proposed_l_move.grid_mask(color))
+            == GridCell.EMPTY
         )
 
         legal_moves: list[Tuple[NeutralPiecePosition, NeutralPiecePosition]] = [
-            (neutral, NeutralPiecePosition(Coordinate(x, y)))
-            for x, y in zip(*empty_cells)
+            (neutral, new)
+            for y, x in empty_cells
             for neutral in self.neutral_positions
+            if (new := NeutralPiecePosition(Coordinate(x, y))) != neutral.position
         ]
 
         if STRICT_MOVES:
-            assert len(legal_moves) == 12, "Invalid number of legal moves"
+            assert len(legal_moves) == 12, "Invalid number of legal moves: " + str(
+                len(legal_moves)
+            )
 
         return legal_moves
