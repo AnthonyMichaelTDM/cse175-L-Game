@@ -2,6 +2,8 @@
 Code for the computer agents (minimax and heuristic alpha-beta pruning)
 """
 
+import abc
+from dataclasses import dataclass
 from typing import Callable
 from action import (
     LGameAction,
@@ -12,6 +14,16 @@ from grid import Grid
 from rules import LGameRules
 
 # TODO: improve evaluation functions and heuristics for the computer agents to use
+
+
+@dataclass()
+class _CacheInfo:
+    hits: int
+    misses: int
+    length: int
+
+    def __str__(self):
+        return f"{{ hits: {self.hits}, misses: {self.misses}, length: {self.length} }}"
 
 
 def agent_cache():
@@ -29,6 +41,8 @@ def agent_cache():
     - without caching: tests run in about 2 minutes
     - with caching (first implementations): tests run in ~25 seconds, but agents perform worse
     - with caching (second implementation): tests run in ~35 seconds, minimax agent performance unaffected (haven't validated alphabeta, but I assume it's fine too)
+
+    with minimax depth = 2, alphabeta depth = 4, this implementation finishes the tests in about 5 minutes, an order of magnitude faster than it would take without caching
     """
 
     def decorator(func):
@@ -42,6 +56,7 @@ def agent_cache():
         cache: dict[Grid, tuple[int, tuple]] = {}
         hits = misses = 0
         cache_get = cache.get  # bound method to lookup a key or return None
+        cache_len = cache.__len__  # get cache size without calling len()
 
         def wrapper(*args, **kwds):
             # Simple caching without ordering or size limit
@@ -58,12 +73,25 @@ def agent_cache():
                 return result[1]
             misses += 1
             result = func(*args, **kwds)
-            if (misses + hits) % 100 == 0:
-                print(f"Cache stats: hits={hits}, misses={misses}")
+            # if (misses + hits) % 100 == 0:
+            #     print(f"Cache stats: hits={hits}, misses={misses}")
             if get_depth(args) == 0:
                 return result
             cache[key] = (depth, result)
             return result
+
+        def cache_info():
+            """Report cache statistics"""
+            return _CacheInfo(hits, misses, cache_len())
+
+        def cache_clear():
+            """Clear the cache and cache statistics"""
+            nonlocal hits, misses
+            cache.clear()
+            hits = misses = 0
+
+        wrapper.cache_info = cache_info
+        wrapper.cache_clear = cache_clear
 
         return wrapper
 
@@ -123,6 +151,14 @@ class ComputerAgent(Agent[LGameAction, LGameState]):
             int: the ID of the other agent
         """
         return 1 - self.id
+
+    @classmethod
+    @abc.abstractmethod
+    def get_cache_info(cls) -> dict[str, _CacheInfo]:
+        """
+        Get the cacheinfo for cached functions
+        """
+        ...
 
 
 class MinimaxAgent(ComputerAgent):
@@ -189,6 +225,13 @@ class MinimaxAgent(ComputerAgent):
             if max_value < min_value:
                 min_value, best_action = max_value, action
         return (min_value, best_action)
+
+    @classmethod
+    def get_cache_info(cls) -> dict[str, _CacheInfo]:
+        return {
+            "min_value": cls.min_value.cache_info(),
+            "max_value": cls.max_value.cache_info(),
+        }
 
 
 class AlphaBetaAgent(ComputerAgent):
@@ -266,3 +309,10 @@ class AlphaBetaAgent(ComputerAgent):
             if value < alpha:
                 return (value, best_action)
         return (value, best_action)
+
+    @classmethod
+    def get_cache_info(cls) -> dict[str, _CacheInfo]:
+        return {
+            "min_value": cls.min_value.cache_info(),
+            "max_value": cls.max_value.cache_info(),
+        }
