@@ -16,6 +16,9 @@ from rules import LGameRules
 # TODO: improve evaluation functions and heuristics for the computer agents to use
 
 
+# TODO: reconsider caching for alphabeta, it should consider the values of alpha and beta as well as the depth so that the agents don't continue playing forever (by repeating the same moves)
+
+
 @dataclass()
 class _CacheInfo:
     hits: int
@@ -26,9 +29,11 @@ class _CacheInfo:
         return f"{{ hits: {self.hits}, misses: {self.misses}, length: {self.length} }}"
 
 
-def agent_cache():
+def minimax_cache():
     """
     A decorator that caches the results of a computer agents min and max functions with the game state grid as the key
+
+    This one is specifically for the minimax agent, as it only considers the depth of the search for cache invalidation
 
     this brings a significant performance improvement to the agents as it avoids recalculating the same states multiple times
 
@@ -89,6 +94,87 @@ def agent_cache():
             if get_depth(args) == 0:
                 return result
             cache[id][key] = (depth, result)
+            return result
+
+        def cache_info(id):
+            """Report cache statistics"""
+            return _CacheInfo(
+                hits[id] if id in hits else 0,
+                misses[id] if id in misses else 0,
+                cache_len(id)(),
+            )
+
+        def cache_clear():
+            """Clear the cache and cache statistics"""
+            nonlocal hits, misses
+            cache.clear()
+            hits = misses = {}
+
+        wrapper.cache_info = cache_info
+        wrapper.cache_clear = cache_clear
+        wrapper.__wrapped__ = func
+
+        return wrapper
+
+    return decorator
+
+
+def alpha_beta_cache():
+    """
+    A decorator that caches the results of a computer agents min and max functions with the game state grid as the key
+
+    This one is specifically for the alpha-beta agent, as it considers the values of alpha and beta as well as the depth for cache invalidation
+    """
+
+    def decorator(func):
+        # Constants shared by all lru cache instances:
+        sentinel = object()
+        # build a key from the function arguments
+        make_key = lambda args, _: args[1].grid
+        # get the depth from the function arguments
+        get_depth = lambda args: args[2]
+        # get the alpha value from the function arguments
+        get_alpha = lambda args: args[3]
+        # get the beta value from the function arguments
+        get_beta = lambda args: args[4]
+
+        cache: dict[Any, dict[Grid, tuple[int, float, float, LGameAction | None]]] = {}
+        hits = misses = {}
+        # bound method to lookup a key or return None
+        cache_get = lambda id: cache[id].get
+        cache_len = lambda id: cache[id].__len__  # get cache size without calling len()
+
+        def wrapper(*args, **kwds):
+            # Simple caching without ordering or size limit
+            nonlocal hits, misses
+            key = make_key(args, kwds)
+            depth = get_depth(args)
+            alpha = get_alpha(args)
+            beta = get_beta(args)
+            id = args[0].id
+
+            # if the agent doesn't have a cache, create one
+            if id not in cache:
+                cache[id] = {}
+                hits[id] = misses[id] = 0
+
+            result = cache_get(id)(key, sentinel)
+            if (
+                result is not sentinel
+                and isinstance(result, tuple)
+                and result[0] >= depth
+                and result[1] >= alpha
+                and result[2] <= beta
+            ):
+                hits[id] = (1 + hits[id]) if id in hits else 1
+                return result[3]
+            misses[id] = (1 + misses[id]) if id in misses else 1
+            result = func(*args, **kwds)
+            # if (misses + hits) % 100 == 0:
+            #     print(f"Cache stats: hits={hits}, misses={misses}")
+            if get_depth(args) == 0:
+                return result
+            cache[id][key] = (depth, alpha, beta, result)
             return result
 
         def cache_info(id):
@@ -212,7 +298,7 @@ class MinimaxAgent(ComputerAgent):
             raise ValueError("No legal actions")
         return action
 
-    @agent_cache()
+    @minimax_cache()
     def max_value(
         self, state: LGameState, depth: int
     ) -> tuple[float, LGameAction | None]:
@@ -240,7 +326,7 @@ class MinimaxAgent(ComputerAgent):
 
         return (max_value, best_action)
 
-    @agent_cache()
+    @minimax_cache()
     def min_value(
         self, state: LGameState, depth: int
     ) -> tuple[float, LGameAction | None]:
@@ -289,7 +375,7 @@ class AlphaBetaAgent(ComputerAgent):
             raise ValueError("No legal actions")
         return action
 
-    @agent_cache()
+    @alpha_beta_cache()
     def max_value(
         self, state: LGameState, depth: int, alpha: float, beta: float
     ) -> tuple[float, LGameAction | None]:
@@ -321,7 +407,7 @@ class AlphaBetaAgent(ComputerAgent):
                 return (value, best_action)
         return (value, best_action)
 
-    @agent_cache()
+    @alpha_beta_cache()
     def min_value(
         self, state: LGameState, depth: int, alpha: float, beta: float
     ) -> tuple[float, LGameAction | None]:
