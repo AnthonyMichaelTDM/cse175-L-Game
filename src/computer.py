@@ -102,9 +102,8 @@ def agent_cache():
         def cache_clear():
             """Clear the cache and cache statistics"""
             nonlocal hits, misses
-            for c in cache:
-                c.clear()
-            hits = misses = {0: 0, 1: 0}
+            cache.clear()
+            hits = misses = {}
 
         wrapper.cache_info = cache_info
         wrapper.cache_clear = cache_clear
