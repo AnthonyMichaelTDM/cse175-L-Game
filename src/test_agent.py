@@ -55,7 +55,7 @@ def test_bad_vs_bad():
         state, _ = game.run_step(state)
         max_steps -= 1
 
-    print("Game ended in", 100 - max_steps, "steps")
+    print("Game ended in", 10 - max_steps, "steps")
 
 
 def test_bad_vs_minimax():
@@ -132,6 +132,7 @@ def test_minimax_v_alpha_beta():
             MinimaxAgent(0, 1, aggressive_heuristic),
             AlphaBetaAgent(1, 2, aggressive_heuristic),
         ),
+        GAME_THAT_ENDS_IN_1_MOVE[0],
     )
     game = LGame(state)
 

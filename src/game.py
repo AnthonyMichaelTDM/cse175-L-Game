@@ -12,9 +12,9 @@ from agent import Agent
 from constants import (
     _grid_swap_red_blue,
     TERMINAL_STATES,
-    is_losing_state,
-    is_terminal_state,
-    is_winning_state,
+    # is_losing_state,
+    # is_terminal_state,
+    # is_winning_state,
 )
 from grid import Grid
 
@@ -36,8 +36,8 @@ class GameState[Action](abc.ABC):
         Returns:
             list[Action]: the legal actions
         """
-        if self.is_terminal():
-            return []
+        # if self.is_terminal():
+        #     return []
 
         if agent_id < 0 or agent_id >= len(self.agents):
             raise ValueError(f"Invalid agent ID: {agent_id}")
@@ -55,7 +55,7 @@ class GameState[Action](abc.ABC):
         Returns:
             GameState: the successor state
         """
-        if self.is_terminal():
+        if self.is_loss(agent_id):
             raise ValueError("Cannot generate successor of terminal state")
 
         if agent_id < 0 or agent_id >= len(self.agents):
@@ -87,6 +87,26 @@ class GameState[Action](abc.ABC):
 
         Returns:
             bool: True if the state is terminal, False otherwise
+        """
+        ...
+
+    @abc.abstractmethod
+    def is_win(self, agent_id: int) -> bool:
+        """
+        Check if the state is a winning state for the specified agent
+
+        Returns:
+            bool: True if the state is a winning state, False otherwise
+        """
+        ...
+
+    @abc.abstractmethod
+    def is_loss(self, agent_id: int) -> bool:
+        """
+        Check if the state is a losing state for the specified agent
+
+        Returns:
+            bool: True if the state is a losing state, False otherwise
         """
         ...
 
@@ -202,25 +222,25 @@ class LGameState(GameState[LGameAction]):
         Returns:
             bool: True if the state is terminal, False otherwise
         """
-        return is_terminal_state(self.grid)
+        return self.is_loss(0) or self.is_loss(1)
 
-    def is_win(self) -> bool:
+    def is_win(self, agent_id: int) -> bool:
         """
         Check if the state is a winning state for the red player
 
         Returns:
             bool: True if the state is a winning state, False otherwise
         """
-        return is_winning_state(self.grid, True)
+        return self.is_loss(1 - agent_id)
 
-    def is_loss(self) -> bool:
+    def is_loss(self, agent_id: int) -> bool:
         """
         Check if the state is a losing state for the red player
 
         Returns:
             bool: True if the state is a losing state, False otherwise
         """
-        return is_losing_state(self.grid, True)
+        return self.get_legal_actions(agent_id) == []
 
     def copy(self, **kwargs) -> "LGameState":
         """
@@ -286,8 +306,8 @@ class LGame:
             print()
             print(new_state.render())
 
-            if new_state.is_terminal():
-                return new_state, i + 1
+            if new_state.is_win(i):
+                return new_state, i
 
         return new_state, None
 
@@ -304,5 +324,5 @@ class LGame:
             state, winner = self.run_step(state)
 
             if winner is not None:
-                print(f"player {winner} wins!")
+                print(f"player {winner + 1} wins!")
         print("Game over")

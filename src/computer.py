@@ -225,15 +225,17 @@ class MinimaxAgent(ComputerAgent):
         Returns:
             (float, Direction): a utility action pair
         """
-        if depth <= 0 or state.is_terminal():
+        if depth <= 0:
             return (self.evaluation_function(state, self.agent_id()), None)
+        if state.is_loss(self.agent_id()):
+            return (float("-inf"), None)
 
         max_value, best_action = float("-inf"), None
         legal_actions = state.get_legal_actions(self.agent_id())
         for action in legal_actions:
             successor = state.generate_successor(action, self.agent_id())
             (min_value, _) = self.min_value(successor, depth)
-            if min_value > max_value:
+            if min_value > max_value or best_action is None:
                 max_value, best_action = min_value, action
 
         return (max_value, best_action)
@@ -251,23 +253,25 @@ class MinimaxAgent(ComputerAgent):
         Returns:
             (float, LGameAction): a utility action pair
         """
-        if depth <= 0 or state.is_terminal():
+        if depth <= 0:
             return (self.evaluation_function(state, self.other_id()), None)
+        if state.is_loss(self.other_id()):
+            return (float("inf"), None)
 
         min_value, best_action = float("inf"), None
         legal_actions = state.get_legal_actions(self.other_id())
         for action in legal_actions:
             successor = state.generate_successor(action, self.other_id())
             (max_value, _) = self.max_value(successor, depth - 1)
-            if max_value < min_value:
+            if max_value < min_value or best_action is None:
                 min_value, best_action = max_value, action
         return (min_value, best_action)
 
     @classmethod
     def get_cache_info(cls, id: int) -> dict[str, _CacheInfo]:
         return {
-            "min_value": cls.min_value.cache_info(id),
             "max_value": cls.max_value.cache_info(id),
+            "min_value": cls.min_value.cache_info(id),
         }
 
 
@@ -300,15 +304,17 @@ class AlphaBetaAgent(ComputerAgent):
         Returns:
             (float, LGameAction): a utility action pair
         """
-        if depth == 0 or state.is_win() or state.is_loss():
+        if depth <= 0:
             return (self.evaluation_function(state, self.agent_id()), None)
+        if state.is_loss(self.agent_id()):
+            return (float("-inf"), None)
 
         value, best_action = float("-inf"), None
         legal_actions = state.get_legal_actions(self.agent_id())
         for action in legal_actions:
             successor = state.generate_successor(action, self.agent_id())
             (min_value, _) = self.min_value(successor, depth, alpha, beta)
-            if min_value > value:
+            if min_value > value or best_action is None:
                 value, best_action = min_value, action
                 alpha = max(alpha, value)
             if value > beta:
@@ -330,8 +336,10 @@ class AlphaBetaAgent(ComputerAgent):
         Returns:
             (float, LGameAction): a utility action pair
         """
-        if depth == 0 or state.is_win() or state.is_loss():
+        if depth <= 0:
             return (self.evaluation_function(state, self.other_id()), None)
+        if state.is_loss(self.other_id()):
+            return (float("inf"), None)
 
         value, best_action = float("inf"), None
         legal_actions = state.get_legal_actions(self.other_id())
@@ -340,7 +348,7 @@ class AlphaBetaAgent(ComputerAgent):
 
             (max_value, _) = self.max_value(successor, depth - 1, alpha, beta)
 
-            if max_value < value:
+            if max_value < value or best_action is None:
                 value, best_action = max_value, action
                 beta = min(beta, value)
             if value < alpha:
@@ -350,6 +358,6 @@ class AlphaBetaAgent(ComputerAgent):
     @classmethod
     def get_cache_info(cls, id: int) -> dict[str, _CacheInfo]:
         return {
-            "min_value": cls.min_value.cache_info(id),
             "max_value": cls.max_value.cache_info(id),
+            "min_value": cls.min_value.cache_info(id),
         }

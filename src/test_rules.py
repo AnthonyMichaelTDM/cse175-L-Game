@@ -30,8 +30,8 @@ def test_terminal_states():
 
     for grid in TERMINAL_STATES:
         state = state.copy(grid=grid)
-        state = state.normalize()
         assert not rules.get_legal_actions(state, 0)
+        assert state.is_terminal()
 
 
 def test_starting_state():
