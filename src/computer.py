@@ -50,6 +50,9 @@ def agent_cache():
         sentinel = object()  # unique object used to signal cache misses
         # build a key from the function arguments
         make_key = lambda args, _: args[1].grid
+        # if we don't want agents to share caches, we can use the agent id as part of the key
+        # make_key = lambda args, _: (args[1].grid, args[0].id)
+
         # get the depth from the function arguments
         get_depth = lambda args: args[2]
 
