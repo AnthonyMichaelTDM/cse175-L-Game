@@ -46,21 +46,24 @@ class AgentType(StrEnum):
         """
         Get an agent of the specified type
         """
+        if depth is None:
+            depth = 3
+
         match self:
             case AgentType.HUMAN:
                 from human import HumanAgent
 
                 return HumanAgent(id)
             case AgentType.MINIMAX:
-                return NotImplemented
-                # from computer import MinimaxAgent
+                # return NotImplemented
+                from computer import MinimaxAgent, mobility_heuristic
 
-                # return MinimaxAgent(depth)
+                return MinimaxAgent(id, depth, mobility_heuristic)
             case AgentType.ALPHABETA:
-                return NotImplemented
-                # from computer import AlphaBetaAgent
+                # return NotImplemented
+                from computer import AlphaBetaAgent, mobility_heuristic
 
-                # return AlphaBetaAgent(depth)
+                return AlphaBetaAgent(id, depth, mobility_heuristic)
 
 
 # parse command line arguments to create the agents
