@@ -11,7 +11,7 @@ from game import LGameState
 from grid import Grid
 from rules import LGameRules
 
-# TODO: implement evaluation functions and heuristics for the computer agents to use
+# TODO: improve evaluation functions and heuristics for the computer agents to use
 
 
 def agent_cache():
@@ -19,6 +19,16 @@ def agent_cache():
     A decorator that caches the results of a computer agents min and max functions with the game state grid as the key
 
     this brings a significant performance improvement to the agents as it avoids recalculating the same states multiple times
+
+    Problem, as descirbed it would ignore the depth, this would affect the ability of the agents to explore the game tree, and lead to suboptimal moves.
+
+    The solution is to store the depth next to the result in the cache, and only use the cached result if its depth is higher than the current depth.
+    With this approach, the agents can still explore the game tree properly, while still benefiting from the cache.
+
+    Results(minimax depth=1, alphabeta depth=2)
+    - without caching: tests run in about 2 minutes
+    - with caching (first implementations): tests run in ~25 seconds, but agents perform worse
+    - with caching (second implementation): tests run in ~35 seconds, minimax agent performance unaffected (haven't validated alphabeta, but I assume it's fine too)
     """
 
     def decorator(func):
@@ -28,30 +38,31 @@ def agent_cache():
         make_key = lambda args, _: args[1].grid
         # get the depth from the function arguments
         get_depth = lambda args: args[2]
-        PREV, NEXT, KEY, RESULT = 0, 1, 2, 3  # names for the link fields
 
-        cache = {}
+        cache: dict[Grid, tuple[int, tuple]] = {}
         hits = misses = 0
         cache_get = cache.get  # bound method to lookup a key or return None
-        root = []  # root of the circular doubly linked list
-        root[:] = [root, root, None, None]  # initialize by pointing to self
 
         def wrapper(*args, **kwds):
             # Simple caching without ordering or size limit
             nonlocal hits, misses
             key = make_key(args, kwds)
+            depth = get_depth(args)
             result = cache_get(key, sentinel)
-            if result is not sentinel:
+            if (
+                result is not sentinel
+                and isinstance(result, tuple)
+                and result[0] >= depth
+            ):
                 hits += 1
-                return result
+                return result[1]
             misses += 1
             result = func(*args, **kwds)
             if (misses + hits) % 100 == 0:
                 print(f"Cache stats: hits={hits}, misses={misses}")
-            # if the depth is 0, we don't want to cache the result as it will have no action associated with it
             if get_depth(args) == 0:
                 return result
-            cache[key] = result
+            cache[key] = (depth, result)
             return result
 
         return wrapper
@@ -73,7 +84,10 @@ def mobility_heuristic(state: LGameState, agent_id: int) -> float:
         float: the heuristic value
     """
     available_moves = len(state.get_legal_actions(1 - agent_id)) // 13
-    return 1.0 / available_moves if available_moves > 0 else float("inf")
+    try:
+        return 1.0 / available_moves
+    except ZeroDivisionError:
+        return float("inf")
 
 
 class ComputerAgent(Agent[LGameAction, LGameState]):
