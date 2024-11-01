@@ -4,7 +4,6 @@ Implementation of the rules of the game that all agents must follow
 
 from action import LGameAction, LPiecePosition
 from agent import AgentRules
-import agent
 from cell import GridCell
 from game import LGameState
 
@@ -88,13 +87,13 @@ class LGameRules(AgentRules[LGameAction, LGameState]):
         Returns:
             LGameState: the new state after applying the action
         """
-        new_state = state.copy()
 
         if agent_id == 0:
-            new_state.grid.move_red(action.l_piece_move)
+            new_grid = state.grid.move_red(action.l_piece_move)
         else:
-            new_state.grid.move_blue(action.l_piece_move)
+            new_grid = state.grid.move_blue(action.l_piece_move)
 
         if action.neutral_piece_move:
-            new_state.grid.move_neutral(*action.neutral_piece_move)
-        return new_state
+            new_grid = new_grid.move_neutral(*action.neutral_piece_move)
+
+        return state.copy(grid=new_grid)

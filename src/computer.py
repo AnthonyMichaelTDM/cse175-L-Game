@@ -27,7 +27,7 @@ def mobility_heuristic(state: LGameState, agent_id: int) -> float:
     Returns:
         float: the heuristic value
     """
-    available_moves = len(state.get_legal_actions(1 - agent_id))
+    available_moves = len(state.get_legal_actions(1 - agent_id)) // 13
     return 1.0 / available_moves if available_moves > 0 else float("inf")
 
 

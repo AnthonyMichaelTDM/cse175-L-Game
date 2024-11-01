@@ -8,7 +8,7 @@ from action import Coordinate, LPiecePosition, NeutralPiecePosition, Orientation
 from grid import Grid
 
 
-def __grid_swap_red_blue(grid: Grid) -> Grid:
+def _grid_swap_red_blue(grid: Grid) -> Grid:
     return Grid._new_with(grid.blue_position, grid.red_position, grid.neutral_positions)
 
 
@@ -145,7 +145,7 @@ def is_losing_state(grid: Grid, red_to_move: bool = True) -> bool:
     if red_to_move:
         return grid.normalize()[0] in TERMINAL_STATES
     else:
-        return __grid_swap_red_blue(grid).normalize()[0] in TERMINAL_STATES
+        return _grid_swap_red_blue(grid).normalize()[0] in TERMINAL_STATES
 
 
 def is_winning_state(grid: Grid, red_to_move: bool = True) -> bool:

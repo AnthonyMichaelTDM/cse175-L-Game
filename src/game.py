@@ -4,18 +4,21 @@ Code for the game environment
 
 import abc
 from dataclasses import dataclass, field
-from typing import Self, Sequence
+from typing import Self, Sequence, override
 
-from action import (
-    LGameAction,
-    Orientation,
-)
+from action import LGameAction, Orientation
 from agent import Agent
-from constants import is_losing_state, is_terminal_state, is_winning_state
+from constants import (
+    _grid_swap_red_blue,
+    TERMINAL_STATES,
+    is_losing_state,
+    is_terminal_state,
+    is_winning_state,
+)
 from grid import Grid
 
 
-@dataclass
+@dataclass(frozen=True)
 class GameState[Action](abc.ABC):
     """
     An abstract base class for a game state
@@ -87,7 +90,7 @@ class GameState[Action](abc.ABC):
         ...
 
 
-@dataclass
+@dataclass(frozen=True)
 class LGameState(GameState[LGameAction]):
     """
     The state of the L-game
@@ -185,11 +188,16 @@ class LGameState(GameState[LGameAction]):
         Returns:
             LGameState: the new game state
         """
+        if "agents" not in kwargs:
+            kwargs["agents"] = self.agents
+        if "grid" not in kwargs:
+            kwargs["grid"] = self.grid
+        if "view_oriention" not in kwargs:
+            kwargs["view_oriention"] = self.view_oriention
+        if "view_mirrored" not in kwargs:
+            kwargs["view_mirrored"] = self.view_mirrored
+
         return LGameState(
-            agents=self.agents,
-            grid=self.grid,
-            view_oriention=self.view_oriention,
-            view_mirrored=self.view_mirrored,
             **kwargs,
         )
 

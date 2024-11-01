@@ -29,7 +29,7 @@ def test_terminal_states():
     state = LGameState((MockAgent(0), MockAgent(1)))
 
     for grid in TERMINAL_STATES:
-        state.grid = grid
+        state = state.copy(grid=grid)
         state = state.normalize()
         assert not rules.get_legal_actions(state, 0)
 

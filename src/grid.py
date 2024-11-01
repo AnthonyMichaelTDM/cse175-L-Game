@@ -3,10 +3,9 @@ Code for the game grid
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
-import numpy as np
+from typing import Tuple
 
-from cell import GridCell
+import numpy as np
 
 from action import (
     ALL_VALID_LPIECE_POSITIONS_GRID_MASKS,
@@ -15,11 +14,12 @@ from action import (
     NeutralPiecePosition,
     Orientation,
 )
+from cell import GridCell
 
 STRICT_MOVES = True
 
 
-@dataclass
+@dataclass(frozen=True)
 class Grid:
     """
     The 4x4 grid for the L-game
@@ -119,7 +119,7 @@ class Grid:
 
         return result
 
-    def move_red(self, new_position: LPiecePosition):
+    def move_red(self, new_position: LPiecePosition) -> "Grid":
         """
         Move the red L-piece to the new position
 
@@ -131,15 +131,22 @@ class Grid:
                 new_position.grid_mask(GridCell.RED), GridCell.RED
             ), "Invalid move, can't move to a non-empty cell"
 
+        grid = self.grid.copy()
+
         if self.red_position is not None:
             if self.red_position == new_position:
                 raise ValueError("Invalid move, can't move to the same position")
-            self.grid = self.grid - self.red_position.grid_mask(GridCell.RED)
-        self.grid = self.grid + new_position.grid_mask(GridCell.RED)
+            grid = grid - self.red_position.grid_mask(GridCell.RED)
+        grid = grid + new_position.grid_mask(GridCell.RED)
 
-        self.red_position = new_position
+        return Grid(
+            grid=grid,
+            red_position=new_position,
+            blue_position=self.blue_position,
+            neutral_positions=self.neutral_positions,
+        )
 
-    def move_blue(self, new_position: LPiecePosition):
+    def move_blue(self, new_position: LPiecePosition) -> "Grid":
         """
         Move the blue L-piece to the new position
 
@@ -152,18 +159,25 @@ class Grid:
                 new_position.grid_mask(GridCell.BLUE), GridCell.BLUE
             ), "Invalid move, can't move to a non-empty cell"
 
+        grid = self.grid.copy()
+
         if self.blue_position is not None:
             if self.blue_position == new_position:
                 raise ValueError("Invalid move, can't move to the same position")
                 # pass
-            self.grid = self.grid - self.blue_position.grid_mask(GridCell.BLUE)
-        self.grid = self.grid + new_position.grid_mask(GridCell.BLUE)
+            grid = grid - self.blue_position.grid_mask(GridCell.BLUE)
+        grid = grid + new_position.grid_mask(GridCell.BLUE)
 
-        self.blue_position = new_position
+        return Grid(
+            grid=grid,
+            red_position=self.red_position,
+            blue_position=new_position,
+            neutral_positions=self.neutral_positions,
+        )
 
     def move_neutral(
         self, old_position: NeutralPiecePosition, new_position: NeutralPiecePosition
-    ):
+    ) -> "Grid":
         """
         Move the neutral pieces to the new positions
 
@@ -180,12 +194,21 @@ class Grid:
                 self.grid[new_position.position.to_index()] == GridCell.EMPTY
             ), "Invalid move, can't move to a non-empty cell"
 
-        self.grid = self.grid - old_position.grid_mask() + new_position.grid_mask()
+        grid = self.grid - old_position.grid_mask() + new_position.grid_mask()
 
         if self.neutral_positions[0] == old_position:
-            self.neutral_positions = (new_position, self.neutral_positions[1])
+            neutral_positions = (new_position, self.neutral_positions[1])
         elif self.neutral_positions[1] == old_position:
-            self.neutral_positions = (self.neutral_positions[0], new_position)
+            neutral_positions = (self.neutral_positions[0], new_position)
+        else:
+            raise ValueError("Invalid move, can't move a non-neutral piece")
+
+        return Grid(
+            grid=grid,
+            red_position=self.red_position,
+            blue_position=self.blue_position,
+            neutral_positions=neutral_positions,
+        )
 
     def render(self) -> str:
         """
