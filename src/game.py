@@ -135,8 +135,8 @@ class LGameState(GameState[LGameAction]):
     # the internal grid, should always be normalized
     grid: Grid = field(default_factory=Grid)
     # the orientation to render the grid in (so that the view shown to the player is consistent)
-    view_oriention: Orientation = Orientation.NORTH
-    view_mirrored: bool = False
+    # view_oriention: Orientation = Orientation.NORTH
+    # view_mirrored: bool = False
     # red_to_move: bool = True
 
     @override
@@ -152,10 +152,10 @@ class LGameState(GameState[LGameAction]):
         """
         Render the game state
         """
-        denormalized = self.grid if not self.view_mirrored else self.grid.mirror()
-        rotated = denormalized.rotate(-self.view_oriention.index())
+        # denormalized = self.grid if not self.view_mirrored else self.grid.mirror()
+        # rotated = denormalized.rotate(-self.view_oriention.index())
 
-        return rotated.render()
+        return self.grid.render()
 
     def rotate(self, n: int = 1) -> "LGameState":
         """
@@ -167,10 +167,10 @@ class LGameState(GameState[LGameAction]):
         return LGameState(
             agents=self.agents,
             grid=self.grid,
-            view_oriention=Orientation.from_index(
-                (self.view_oriention.index() + n) % Orientation.LENGTH()
-            ),
-            view_mirrored=self.view_mirrored,
+            # view_oriention=Orientation.from_index(
+            #     (self.view_oriention.index() + n) % Orientation.LENGTH()
+            # ),
+            # view_mirrored=self.view_mirrored,
         )
 
     def normalize(self) -> "LGameState":
@@ -190,8 +190,8 @@ class LGameState(GameState[LGameAction]):
         return LGameState(
             agents=self.agents,
             grid=new_grid,
-            view_oriention=self.view_oriention.rotate(rotations),
-            view_mirrored=self.view_mirrored ^ mirrored,
+            # view_oriention=self.view_oriention.rotate(rotations),
+            # view_mirrored=self.view_mirrored ^ mirrored,
         )
 
     def is_terminal(self) -> bool:
@@ -235,10 +235,10 @@ class LGameState(GameState[LGameAction]):
             kwargs["agents"] = self.agents
         if "grid" not in kwargs:
             kwargs["grid"] = self.grid
-        if "view_oriention" not in kwargs:
-            kwargs["view_oriention"] = self.view_oriention
-        if "view_mirrored" not in kwargs:
-            kwargs["view_mirrored"] = self.view_mirrored
+        # if "view_oriention" not in kwargs:
+        #     kwargs["view_oriention"] = self.view_oriention
+        # if "view_mirrored" not in kwargs:
+        #     kwargs["view_mirrored"] = self.view_mirrored
 
         return LGameState(
             **kwargs,
@@ -253,34 +253,53 @@ class LGame:
 
     initial_state: LGameState
 
-    def run_step(self, state: LGameState) -> LGameState:
+    def run_step(self, state: LGameState) -> tuple[LGameState, int | None]:
         """
         Play a single step of the game
         returns the updated state
         """
+        from computer import ComputerAgent
+
         new_state = state.normalize()
 
         for i, agent in enumerate(state.agents):
+            if isinstance(agent, ComputerAgent):
+                print(f"\nplayer {i+1} is thinking")
+
             # get the next action
             action = agent.get_action(new_state)
+
             # generate the successor state
             new_state = new_state.generate_successor(action, i)
-            # TODO: do something special if the state is terminal (e.g., print the winner)
-            if new_state.is_terminal():
-                print("Game over")
-                return new_state
 
-            # render the new state
+            if isinstance(agent, ComputerAgent):
+                # action = action if not new_state.view_mirrored else action.mirror()
+                # action = action.rotate(-new_state.view_oriention.index())
+                print(f"\tplayer {i+1} chose: {str(action)}")
+                for func_name, info in agent.get_cache_info().items():
+                    print(f"{func_name} stats:{info}")
+
+            # render new state
+            print()
             print(new_state.render())
 
-        return new_state
+            if new_state.is_terminal():
+                return new_state, i + 1
+
+        return new_state, None
 
     def run(self):
         """
         Run the game loop
         """
-        # TODO: needs a way to determine the winner
-        state = self.initial_state
+
+        # TODO: do something special if the state is terminal (e.g., print the winner)
+        state = self.initial_state.normalize()
+        # render the starting state
+        print(state.render())
         while not state.is_terminal():
-            state = self.run_step(state)
+            state, winner = self.run_step(state)
+
+            if winner is not None:
+                print(f"player {winner} wins!")
         print("Game over")

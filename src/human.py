@@ -31,9 +31,9 @@ class HumanAgent(Agent[LGameAction, LGameState]):
         """
 
         # prompt user for action
-        print("Enter your move (type `help` for formatting instructions):")
-
-        command = input().strip()
+        command = input(
+            "\nEnter your move (type `help` for formatting instructions, `legal` for legal l-moves, `exit` to quit):\n"
+        ).strip()
 
         if command == "help":
             print(
@@ -46,6 +46,22 @@ and E is the orientation of the foot of the L (out of North, South, East, West);
 and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece, omit the part 4 3 1 1."""
             )
             return self.get_action(state)
+        if command == "legal":
+            print("Legal L-moves:")
+            if self.agent_id() == 0:
+                moves = state.grid.get_red_legal_moves() or []
+            if self.agent_id() == 1:
+                moves = state.grid.get_blue_legal_moves() or []
+
+            for move in moves:
+                # denorm_move = move if not state.view_mirrored else move.mirror()
+                # denorm_move = denorm_move.rotate(-state.view_oriention.index())
+                print(
+                    f"\t{move.corner.x + 1} {move.corner.y + 1} {move.orientation.value}"
+                )
+            return self.get_action(state)
+        if command == "exit":
+            exit()
 
         # parse the command
         try:
@@ -53,6 +69,10 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
         except ValueError as e:
             print(f"{e}")
             return self.get_action(state)
+
+        # transform action to normalized grid
+        # action = action if not state.view_mirrored else action.mirror()
+        # action = action.rotate(-state.view_oriention.index())
 
         # check if the action is legal
         if action not in self.get_rules().get_legal_actions(state, self.id):

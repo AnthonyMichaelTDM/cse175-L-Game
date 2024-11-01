@@ -162,6 +162,9 @@ class LPiecePosition:
         """
         return LPiecePosition(self.corner.mirror(), self.orientation.mirror())
 
+    def __str__(self) -> str:
+        return f"{self.corner.x + 1} {self.corner.y + 1} {self.orientation.value}"
+
 
 # Precompute all valid L-piece positions (4x4 grid)
 ALL_VALID_LPIECE_POSITIONS: list[LPiecePosition] = [
@@ -226,3 +229,35 @@ class LGameAction:
     neutral_piece_move: Optional[tuple[NeutralPiecePosition, NeutralPiecePosition]] = (
         None
     )
+
+    def rotate(self, n: int = 1) -> "LGameAction":
+        """
+        rotate the action `n` times
+        """
+        l_piece_move = self.l_piece_move.rotate(n)
+        neutral_piece_move = (
+            (self.neutral_piece_move[0].rotate(n), self.neutral_piece_move[1].rotate(n))
+            if self.neutral_piece_move
+            else None
+        )
+        return LGameAction(l_piece_move, neutral_piece_move)
+
+    def mirror(self) -> "LGameAction":
+        """
+        mirror the action across the x=2 line
+        """
+        l_piece_move = self.l_piece_move.mirror()
+        neutral_piece_move = (
+            (self.neutral_piece_move[0].mirror(), self.neutral_piece_move[1].mirror())
+            if self.neutral_piece_move
+            else None
+        )
+        return LGameAction(l_piece_move, neutral_piece_move)
+
+    def __str__(self) -> str:
+        string = str(self.l_piece_move)
+        if self.neutral_piece_move is not None:
+            old = self.neutral_piece_move[0].position
+            new = self.neutral_piece_move[1].position
+            string += f" {old.x + 1} {old.y + 1} {new.x + 1} {new.y+1}"
+        return string

@@ -36,7 +36,7 @@ class AgentType(StrEnum):
     @staticmethod
     def from_str(s: str) -> "AgentType":
         try:
-            return AgentType(s)
+            return AgentType(s.lower())
         except ValueError:
             raise ValueError(f"Invalid agent type: {s}")
 

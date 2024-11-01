@@ -52,7 +52,7 @@ def test_bad_vs_bad():
     max_steps = 10
 
     while not state.is_terminal() and max_steps > 0:
-        state = game.run_step(state)
+        state, _ = game.run_step(state)
         max_steps -= 1
 
     print("Game ended in", 100 - max_steps, "steps")
@@ -70,7 +70,7 @@ def test_bad_vs_minimax():
     max_steps = 2
 
     while not state.is_terminal() and max_steps > 0:
-        state = game.run_step(state)
+        state, _ = game.run_step(state)
         max_steps -= 1
 
     print("Game ended in", 2 - max_steps, "steps")
@@ -88,7 +88,7 @@ def test_minimax_vs_bad_player():
     max_steps = 2
 
     while not state.is_terminal() and max_steps > 0:
-        state = game.run_step(state)
+        state, _ = game.run_step(state)
         max_steps -= 1
 
     print("Game ended in", 2 - max_steps, "steps")
@@ -104,9 +104,10 @@ def test_minimax():
     )
     game = LGame(state)
 
-    new_state = game.run_step(state)
+    new_state, winner = game.run_step(state)
 
     assert new_state.is_terminal()
+    assert winner and winner == 1
 
 
 def test_alphabeta():
@@ -119,9 +120,10 @@ def test_alphabeta():
     )
     game = LGame(state)
 
-    new_state = game.run_step(state)
+    new_state, winner = game.run_step(state)
 
     assert new_state.is_terminal()
+    assert winner and winner == 1
 
 
 def test_minimax_v_alpha_beta():
@@ -133,6 +135,7 @@ def test_minimax_v_alpha_beta():
     )
     game = LGame(state)
 
-    new_state = game.run_step(state)
+    new_state, winner = game.run_step(state)
 
     assert new_state.is_terminal()
+    assert winner and winner == 1
