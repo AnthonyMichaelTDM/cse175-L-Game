@@ -264,10 +264,10 @@ class MinimaxAgent(ComputerAgent):
         return (min_value, best_action)
 
     @classmethod
-    def get_cache_info(cls) -> dict[str, _CacheInfo]:
+    def get_cache_info(cls, id: int) -> dict[str, _CacheInfo]:
         return {
-            "min_value": cls.min_value.cache_info(),
-            "max_value": cls.max_value.cache_info(),
+            "min_value": cls.min_value.cache_info(id),
+            "max_value": cls.max_value.cache_info(id),
         }
 
 
