@@ -11,7 +11,7 @@ from action import (
     Orientation,
 )
 from agent import Agent, AgentRules
-from computer import AlphaBetaAgent, MinimaxAgent, mobility_heuristic
+from computer import AlphaBetaAgent, MinimaxAgent, aggressive_heuristic
 from game import LGame, LGameState
 from grid import Grid
 from rules import LGameRules
@@ -62,7 +62,7 @@ def test_bad_vs_minimax():
     state = LGameState(
         (
             BadAgent(0),
-            MinimaxAgent(1, 1, mobility_heuristic),
+            MinimaxAgent(1, 1, aggressive_heuristic),
         ),
     )
     game = LGame(state)
@@ -79,7 +79,7 @@ def test_bad_vs_minimax():
 def test_minimax_vs_bad_player():
     state = LGameState(
         (
-            MinimaxAgent(0, 1, mobility_heuristic),
+            MinimaxAgent(0, 1, aggressive_heuristic),
             BadAgent(1),
         ),
     )
@@ -97,8 +97,8 @@ def test_minimax_vs_bad_player():
 def test_minimax():
     state = LGameState(
         (
-            MinimaxAgent(0, 1, mobility_heuristic),
-            MinimaxAgent(1, 1, mobility_heuristic),
+            MinimaxAgent(0, 1, aggressive_heuristic),
+            MinimaxAgent(1, 1, aggressive_heuristic),
         ),
         GAME_THAT_ENDS_IN_1_MOVE[0],
     )
@@ -113,8 +113,8 @@ def test_minimax():
 def test_alphabeta():
     state = LGameState(
         (
-            AlphaBetaAgent(0, 2, mobility_heuristic),
-            AlphaBetaAgent(1, 2, mobility_heuristic),
+            AlphaBetaAgent(0, 2, aggressive_heuristic),
+            AlphaBetaAgent(1, 2, aggressive_heuristic),
         ),
         GAME_THAT_ENDS_IN_1_MOVE[0],
     )
@@ -129,8 +129,8 @@ def test_alphabeta():
 def test_minimax_v_alpha_beta():
     state = LGameState(
         (
-            MinimaxAgent(0, 1, mobility_heuristic),
-            AlphaBetaAgent(1, 2, mobility_heuristic),
+            MinimaxAgent(0, 1, aggressive_heuristic),
+            AlphaBetaAgent(1, 2, aggressive_heuristic),
         ),
     )
     game = LGame(state)

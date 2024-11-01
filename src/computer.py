@@ -114,11 +114,13 @@ def agent_cache():
     return decorator
 
 
-def mobility_heuristic(state: LGameState, agent_id: int) -> float:
+def aggressive_heuristic(state: LGameState, agent_id: int) -> float:
     """
     A heuristic function that evaluates the mobility of agents in the L-game
 
     specifically, the heuristic value is the reciprocal of the number of available moves for the other agent (the opponent)
+
+    The idea is that less available moves for the opponent is better for the agent
 
     Args:
         state (LGameState): the current game state
@@ -132,6 +134,25 @@ def mobility_heuristic(state: LGameState, agent_id: int) -> float:
         return 1.0 / available_moves
     except ZeroDivisionError:
         return float("inf")
+
+
+def defensive_heuristic(state: LGameState, agent_id: int) -> float:
+    """
+    A heuristic function that evaluates the mobility of agents in the L-game
+
+    specifically, the heuristic value is the number of available moves for the agent
+
+    The idea is that more available moves for the agent is better for the agent
+
+    Args:
+        state (LGameState): the current game state
+        agent_id (int): the ID of the agent to evaluate
+
+    Returns:
+        float: the heuristic value
+    """
+    available_moves = len(state.get_legal_actions(agent_id)) // 13
+    return available_moves
 
 
 class ComputerAgent(Agent[LGameAction, LGameState]):

@@ -2,7 +2,7 @@
 Main file for the project,
 parses the command line arguments to determine the mode of operation
 
-usage: main.py -p1 <AgentType> [-d <int>] -p2 <AgentType> [-d <int>] [-d1 <int>] [-d2 <int>]
+usage: main.py -p1 <AgentType> [-d1 <int>] [-h1 <heuristic>] -p2 <AgentType> [-d2 <int>] [-h2 <heuristic>] [-d <int>]
 
 - `-p1` and `-p2` are the types of agents to use for player 1 and player 2, respectively. The agent types can be one of the following:
     - `human`: a human player
@@ -12,6 +12,11 @@ usage: main.py -p1 <AgentType> [-d <int>] -p2 <AgentType> [-d <int>] [-d1 <int>]
     - if the agent type is `human`, the depth argument is ignored
     - if `-d` is specified instead, it sets the depth for both computer players
         - if `-d1` or `-d2` is also specified, they take precedence over `-d` for the corresponding player
+- `-h1` and `-h2` are optional arguments that specify the heuristic function to use for the first and second computer players, respectively.
+    The default heuristic is the aggressive heuristic.
+    - the options for the heuristic are:
+        - `aggressive`: the aggressive heuristic
+        - `defensive`: the defensive heuristic
 
 Then runs the game loop with the specified agents
 """
@@ -41,7 +46,7 @@ class AgentType(StrEnum):
             raise ValueError(f"Invalid agent type: {s}")
 
     def get_agent(
-        self, id: int, depth: int | None = None
+        self, id: int, depth: int | None = None, heuristic: str | None = None
     ) -> Agent[LGameAction, LGameState]:
         """
         Get an agent of the specified type
@@ -49,21 +54,30 @@ class AgentType(StrEnum):
         if depth is None:
             depth = 3
 
+        if heuristic is None:
+            heuristic = "aggressive"
+
+        match heuristic:
+            case "aggressive":
+                from computer import aggressive_heuristic as agent_heuristic
+            case "defensive":
+                from computer import defensive_heuristic as agent_heuristic
+            case _:
+                raise ValueError(f"Invalid heuristic: {heuristic}")
+
         match self:
             case AgentType.HUMAN:
                 from human import HumanAgent
 
                 return HumanAgent(id)
             case AgentType.MINIMAX:
-                # return NotImplemented
-                from computer import MinimaxAgent, mobility_heuristic
+                from computer import MinimaxAgent
 
-                return MinimaxAgent(id, depth, mobility_heuristic)
+                return MinimaxAgent(id, depth, agent_heuristic)
             case AgentType.ALPHABETA:
-                # return NotImplemented
-                from computer import AlphaBetaAgent, mobility_heuristic
+                from computer import AlphaBetaAgent
 
-                return AlphaBetaAgent(id, depth, mobility_heuristic)
+                return AlphaBetaAgent(id, depth, agent_heuristic)
 
 
 # parse command line arguments to create the agents
@@ -71,17 +85,29 @@ parser = argparse.ArgumentParser(description="Play the L-game")
 parser.add_argument(
     "-p1", type=AgentType.from_str, required=True, help="Type of agent for player 1"
 )
+parser.add_argument("-d1", type=int, help="Depth limit of the search tree for player 1")
+parser.add_argument(
+    "-h1",
+    type=str,
+    help="Heuristic function for player 1",
+    choices=["aggressive", "defensive"],
+)
 parser.add_argument(
     "-p2", type=AgentType.from_str, required=True, help="Type of agent for player 2"
+)
+parser.add_argument("-d2", type=int, help="Depth limit of the search tree for player 2")
+parser.add_argument(
+    "-h2",
+    type=str,
+    help="Heuristic function for player 2",
+    choices=["aggressive", "defensive"],
 )
 parser.add_argument(
     "-d",
     type=int,
     default=3,
-    help="Depth limit of the search tree for computer players",
+    help="Depth limit of the search tree for computer players (overridden by -d1 and -d2)",
 )
-parser.add_argument("-d1", type=int, help="Depth limit of the search tree for player 1")
-parser.add_argument("-d2", type=int, help="Depth limit of the search tree for player 2")
 
 args = parser.parse_args()
 
