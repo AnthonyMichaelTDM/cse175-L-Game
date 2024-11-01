@@ -4,6 +4,7 @@ Code for the game environment
 
 import abc
 from dataclasses import dataclass, field
+import time
 from typing import Self, Sequence, override
 
 from action import LGameAction, Orientation
@@ -265,6 +266,7 @@ class LGame:
         for i, agent in enumerate(state.agents):
             if isinstance(agent, ComputerAgent):
                 print(f"\nplayer {i+1} is thinking")
+                start_time = time.time()
 
             # get the next action
             action = agent.get_action(new_state)
@@ -275,7 +277,8 @@ class LGame:
             if isinstance(agent, ComputerAgent):
                 # action = action if not new_state.view_mirrored else action.mirror()
                 # action = action.rotate(-new_state.view_oriention.index())
-                print(f"\tplayer {i+1} chose: {str(action)}")
+                ellapsed = time.time() - start_time
+                print(f"\tplayer {i+1} chose: {str(action)} in {ellapsed:.2f}s")
                 for func_name, info in agent.get_cache_info(i).items():
                     print(f"{func_name} stats:{info}")
 
