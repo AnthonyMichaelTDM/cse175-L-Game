@@ -7,11 +7,56 @@ from action import (
     LGameAction,
 )
 from agent import Agent, AgentRules
-from cell import GridCell
 from game import LGameState
+from grid import Grid
 from rules import LGameRules
 
 # TODO: implement evaluation functions and heuristics for the computer agents to use
+
+
+def agent_cache():
+    """
+    A decorator that caches the results of a computer agents min and max functions with the game state grid as the key
+
+    this brings a significant performance improvement to the agents as it avoids recalculating the same states multiple times
+    """
+
+    def decorator(func):
+        # Constants shared by all lru cache instances:
+        sentinel = object()  # unique object used to signal cache misses
+        # build a key from the function arguments
+        make_key = lambda args, _: args[1].grid
+        # get the depth from the function arguments
+        get_depth = lambda args: args[2]
+        PREV, NEXT, KEY, RESULT = 0, 1, 2, 3  # names for the link fields
+
+        cache = {}
+        hits = misses = 0
+        cache_get = cache.get  # bound method to lookup a key or return None
+        root = []  # root of the circular doubly linked list
+        root[:] = [root, root, None, None]  # initialize by pointing to self
+
+        def wrapper(*args, **kwds):
+            # Simple caching without ordering or size limit
+            nonlocal hits, misses
+            key = make_key(args, kwds)
+            result = cache_get(key, sentinel)
+            if result is not sentinel:
+                hits += 1
+                return result
+            misses += 1
+            result = func(*args, **kwds)
+            if (misses + hits) % 100 == 0:
+                print(f"Cache stats: hits={hits}, misses={misses}")
+            # if the depth is 0, we don't want to cache the result as it will have no action associated with it
+            if get_depth(args) == 0:
+                return result
+            cache[key] = result
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 def mobility_heuristic(state: LGameState, agent_id: int) -> float:
@@ -80,6 +125,7 @@ class MinimaxAgent(ComputerAgent):
             raise ValueError("No legal actions")
         return action
 
+    @agent_cache()
     def max_value(
         self, state: LGameState, depth: int
     ) -> tuple[float, LGameAction | None]:
@@ -96,8 +142,8 @@ class MinimaxAgent(ComputerAgent):
             return (self.evaluation_function(state, self.agent_id()), None)
 
         max_value, best_action = float("-inf"), None
-        for action in state.get_legal_actions(self.agent_id()):
-
+        legal_actions = state.get_legal_actions(self.agent_id())
+        for action in legal_actions:
             successor = state.generate_successor(action, self.agent_id())
             (min_value, _) = self.min_value(successor, depth)
             if min_value > max_value:
@@ -105,6 +151,7 @@ class MinimaxAgent(ComputerAgent):
 
         return (max_value, best_action)
 
+    @agent_cache()
     def min_value(
         self, state: LGameState, depth: int
     ) -> tuple[float, LGameAction | None]:
@@ -121,7 +168,8 @@ class MinimaxAgent(ComputerAgent):
             return (self.evaluation_function(state, self.other_id()), None)
 
         min_value, best_action = float("inf"), None
-        for action in state.get_legal_actions(self.other_id()):
+        legal_actions = state.get_legal_actions(self.other_id())
+        for action in legal_actions:
             successor = state.generate_successor(action, self.other_id())
             (max_value, _) = self.max_value(successor, depth - 1)
             if max_value < min_value:
@@ -143,6 +191,7 @@ class AlphaBetaAgent(ComputerAgent):
             raise ValueError("No legal actions")
         return action
 
+    @agent_cache()
     def max_value(
         self, state: LGameState, depth: int, alpha: float, beta: float
     ) -> tuple[float, LGameAction | None]:
@@ -161,7 +210,8 @@ class AlphaBetaAgent(ComputerAgent):
             return (self.evaluation_function(state, self.agent_id()), None)
 
         value, best_action = float("-inf"), None
-        for action in state.get_legal_actions(self.agent_id()):
+        legal_actions = state.get_legal_actions(self.agent_id())
+        for action in legal_actions:
             successor = state.generate_successor(action, self.agent_id())
             (min_value, _) = self.min_value(successor, depth, alpha, beta)
             if min_value > value:
@@ -171,6 +221,7 @@ class AlphaBetaAgent(ComputerAgent):
                 return (value, best_action)
         return (value, best_action)
 
+    @agent_cache()
     def min_value(
         self, state: LGameState, depth: int, alpha: float, beta: float
     ) -> tuple[float, LGameAction | None]:
@@ -189,7 +240,8 @@ class AlphaBetaAgent(ComputerAgent):
             return (self.evaluation_function(state, self.other_id()), None)
 
         value, best_action = float("inf"), None
-        for action in state.get_legal_actions(self.other_id()):
+        legal_actions = state.get_legal_actions(self.other_id())
+        for action in legal_actions:
             successor = state.generate_successor(action, self.other_id())
 
             (max_value, _) = self.max_value(successor, depth - 1, alpha, beta)
