@@ -43,6 +43,9 @@ def agent_cache():
     - with caching (second implementation): tests run in ~35 seconds, minimax agent performance unaffected (haven't validated alphabeta, but I assume it's fine too)
 
     with minimax depth = 2, alphabeta depth = 4, this implementation finishes the tests in about 5 minutes, an order of magnitude faster than it would take without caching
+
+    Caching works particularly well for this problem because although the branching factor is massive, there are relatively few unique states, so the cache hit rate is high
+    ( the cache should never need to be larger than 2296 * 2 = 4592 entries, which is very manageable )
     """
 
     def decorator(func):
