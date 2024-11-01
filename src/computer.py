@@ -4,7 +4,7 @@ Code for the computer agents (minimax and heuristic alpha-beta pruning)
 
 import abc
 from dataclasses import dataclass
-from typing import Callable
+from typing import Any, Callable
 from action import (
     LGameAction,
 )
@@ -53,51 +53,62 @@ def agent_cache():
         sentinel = object()  # unique object used to signal cache misses
         # build a key from the function arguments
         make_key = lambda args, _: args[1].grid
-        # if we don't want agents to share caches, we can use the agent id as part of the key
-        # make_key = lambda args, _: (args[1].grid, args[0].id)
-
         # get the depth from the function arguments
         get_depth = lambda args: args[2]
 
-        cache: dict[Grid, tuple[int, tuple]] = {}
-        hits = misses = 0
-        cache_get = cache.get  # bound method to lookup a key or return None
-        cache_len = cache.__len__  # get cache size without calling len()
+        cache: dict[Any, dict[Grid, tuple[int, tuple]]] = {}
+        hits = misses = {}
+        # bound method to lookup a key or return None
+        cache_get = lambda id: cache[id].get
+        cache_len = lambda id: cache[id].__len__  # get cache size without calling len()
 
         def wrapper(*args, **kwds):
             # Simple caching without ordering or size limit
             nonlocal hits, misses
             key = make_key(args, kwds)
             depth = get_depth(args)
-            result = cache_get(key, sentinel)
+            id = args[0].id
+
+            # if the agent doesn't have a cache, create one
+            if id not in cache:
+                cache[id] = {}
+                hits[id] = misses[id] = 0
+
+            result = cache_get(id)(key, sentinel)
             if (
                 result is not sentinel
                 and isinstance(result, tuple)
                 and result[0] >= depth
             ):
-                hits += 1
+                hits[id] = (1 + hits[id]) if id in hits else 1
                 return result[1]
-            misses += 1
+            misses[id] = (1 + misses[id]) if id in misses else 1
             result = func(*args, **kwds)
             # if (misses + hits) % 100 == 0:
             #     print(f"Cache stats: hits={hits}, misses={misses}")
             if get_depth(args) == 0:
                 return result
-            cache[key] = (depth, result)
+            cache[id][key] = (depth, result)
             return result
 
-        def cache_info():
+        def cache_info(id):
             """Report cache statistics"""
-            return _CacheInfo(hits, misses, cache_len())
+            return _CacheInfo(
+                hits[id] if id in hits else 0,
+                misses[id] if id in misses else 0,
+                cache_len(id)(),
+            )
 
         def cache_clear():
             """Clear the cache and cache statistics"""
             nonlocal hits, misses
-            cache.clear()
-            hits = misses = 0
+            for c in cache:
+                c.clear()
+            hits = misses = {0: 0, 1: 0}
 
         wrapper.cache_info = cache_info
         wrapper.cache_clear = cache_clear
+        wrapper.__wrapped__ = func
 
         return wrapper
 
@@ -160,7 +171,7 @@ class ComputerAgent(Agent[LGameAction, LGameState]):
 
     @classmethod
     @abc.abstractmethod
-    def get_cache_info(cls) -> dict[str, _CacheInfo]:
+    def get_cache_info(cls, id: int) -> dict[str, _CacheInfo]:
         """
         Get the cacheinfo for cached functions
         """
@@ -317,8 +328,8 @@ class AlphaBetaAgent(ComputerAgent):
         return (value, best_action)
 
     @classmethod
-    def get_cache_info(cls) -> dict[str, _CacheInfo]:
+    def get_cache_info(cls, id: int) -> dict[str, _CacheInfo]:
         return {
-            "min_value": cls.min_value.cache_info(),
-            "max_value": cls.max_value.cache_info(),
+            "min_value": cls.min_value.cache_info(id),
+            "max_value": cls.max_value.cache_info(id),
         }

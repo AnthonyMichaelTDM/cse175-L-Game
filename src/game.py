@@ -276,7 +276,7 @@ class LGame:
                 # action = action if not new_state.view_mirrored else action.mirror()
                 # action = action.rotate(-new_state.view_oriention.index())
                 print(f"\tplayer {i+1} chose: {str(action)}")
-                for func_name, info in agent.get_cache_info().items():
+                for func_name, info in agent.get_cache_info(i).items():
                     print(f"{func_name} stats:{info}")
 
             # render new state
