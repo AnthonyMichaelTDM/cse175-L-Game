@@ -22,6 +22,7 @@ Then runs the game loop with the specified agents
 """
 
 import argparse
+from random import randint
 from enum import StrEnum
 
 from action import LGameAction
@@ -52,7 +53,8 @@ class AgentType(StrEnum):
         Get an agent of the specified type
         """
         if depth is None:
-            depth = 3
+            depth = randint(1,3)
+            print(f"Agent {id} given random depth: {depth}")
 
         if heuristic is None:
             heuristic = "aggressive"
@@ -105,7 +107,6 @@ parser.add_argument(
 parser.add_argument(
     "-d",
     type=int,
-    default=3,
     help="Depth limit of the search tree for computer players (overridden by -d1 and -d2)",
 )
 
