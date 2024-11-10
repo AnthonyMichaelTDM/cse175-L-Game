@@ -27,7 +27,7 @@ from enum import StrEnum
 from action import LGameAction
 from agent import Agent
 from game import LGame, LGameState
-
+from gridgui import GameDisplay  # Import GameDisplay only
 
 # parse command line arguments
 class AgentType(StrEnum):
@@ -68,59 +68,32 @@ class AgentType(StrEnum):
         match self:
             case AgentType.HUMAN:
                 from human import HumanAgent
-
                 return HumanAgent(id)
             case AgentType.MINIMAX:
                 from computer import MinimaxAgent
-
                 return MinimaxAgent(id, depth, agent_heuristic)
             case AgentType.ALPHABETA:
                 from computer import AlphaBetaAgent
-
                 return AlphaBetaAgent(id, depth, agent_heuristic)
 
-
-# parse command line arguments to create the agents
+# Parse command line arguments to create the agents
 parser = argparse.ArgumentParser(description="Play the L-game")
-parser.add_argument(
-    "-p1", type=AgentType.from_str, required=True, help="Type of agent for player 1"
-)
+parser.add_argument("-p1", type=AgentType.from_str, required=True, help="Type of agent for player 1")
 parser.add_argument("-d1", type=int, help="Depth limit of the search tree for player 1")
-parser.add_argument(
-    "-h1",
-    type=str,
-    help="Heuristic function for player 1",
-    choices=["aggressive", "defensive"],
-)
-parser.add_argument(
-    "-p2", type=AgentType.from_str, required=True, help="Type of agent for player 2"
-)
+parser.add_argument("-h1", type=str, help="Heuristic function for player 1", choices=["aggressive", "defensive"])
+parser.add_argument("-p2", type=AgentType.from_str, required=True, help="Type of agent for player 2")
 parser.add_argument("-d2", type=int, help="Depth limit of the search tree for player 2")
-parser.add_argument(
-    "-h2",
-    type=str,
-    help="Heuristic function for player 2",
-    choices=["aggressive", "defensive"],
-)
-parser.add_argument(
-    "-d",
-    type=int,
-    default=3,
-    help="Depth limit of the search tree for computer players (overridden by -d1 and -d2)",
-)
+parser.add_argument("-h2", type=str, help="Heuristic function for player 2", choices=["aggressive", "defensive"])
+parser.add_argument("-d", type=int, default=3, help="Depth limit for computer players (overridden by -d1 and -d2)")
 
 args = parser.parse_args()
 
-if hasattr(args, "help"):
-    parser.print_help()
-    exit()
+# Create the agents
+player1 = args.p1.get_agent(0, args.d1 or args.d, args.h1)
+player2 = args.p2.get_agent(1, args.d2 or args.d, args.h2)
 
-# create the agents
-player1 = args.p1.get_agent(0, args.d1 or args.d)
-player2 = args.p2.get_agent(1, args.d2 or args.d)
-
-# initialize the game
 game = LGame(LGameState((player1, player2)))
 
-# run the game loop
-game.run()
+if __name__ == "__main__":
+    display = GameDisplay(game)
+    display.run()
