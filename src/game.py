@@ -156,9 +156,9 @@ class LGameState(GameState[LGameAction]):
     # the internal grid, should always be normalized
     grid: Grid = field(default_factory=Grid)
     # the orientation to render the grid in (so that the view shown to the player is consistent)
-    # view_oriention: Orientation = Orientation.NORTH
-    # view_mirrored: bool = False
-    # red_to_move: bool = True
+    view_oriention: Orientation = Orientation.NORTH
+    view_mirrored: bool = False
+    # red_to_move: bool = True  
 
     @override
     def get_legal_actions(self, agent_id: int) -> list[LGameAction]:
@@ -173,10 +173,11 @@ class LGameState(GameState[LGameAction]):
         """
         Render the game state
         """
-        # denormalized = self.grid if not self.view_mirrored else self.grid.mirror()
-        # rotated = denormalized.rotate(-self.view_oriention.index())
+        denormalized = self.grid if not self.view_mirrored else self.grid.mirror()
+        rotated = denormalized.rotate(-self.view_oriention.index())
+        return rotated.render()
 
-        return self.grid.render()
+        # return self.grid.render()
 
     def rotate(self, n: int = 1) -> "LGameState":
         """
@@ -185,13 +186,14 @@ class LGameState(GameState[LGameAction]):
         Args:
             n (int): the number of times to rotate the game state
         """
+        print("called rotate")
         return LGameState(
             agents=self.agents,
             grid=self.grid,
-            # view_oriention=Orientation.from_index(
-            #     (self.view_oriention.index() + n) % Orientation.LENGTH()
-            # ),
-            # view_mirrored=self.view_mirrored,
+            view_oriention=Orientation.from_index(
+                (self.view_oriention.index() + n) % Orientation.LENGTH()
+            ),
+            view_mirrored=self.view_mirrored,
         )
 
     def normalize(self) -> "LGameState":
@@ -211,8 +213,8 @@ class LGameState(GameState[LGameAction]):
         return LGameState(
             agents=self.agents,
             grid=new_grid,
-            # view_oriention=self.view_oriention.rotate(rotations),
-            # view_mirrored=self.view_mirrored ^ mirrored,
+            view_oriention=self.view_oriention.rotate(rotations),
+            view_mirrored=self.view_mirrored ^ mirrored,
         )
 
     def is_terminal(self) -> bool:
@@ -256,10 +258,10 @@ class LGameState(GameState[LGameAction]):
             kwargs["agents"] = self.agents
         if "grid" not in kwargs:
             kwargs["grid"] = self.grid
-        # if "view_oriention" not in kwargs:
-        #     kwargs["view_oriention"] = self.view_oriention
-        # if "view_mirrored" not in kwargs:
-        #     kwargs["view_mirrored"] = self.view_mirrored
+        if "view_oriention" not in kwargs:
+            kwargs["view_oriention"] = self.view_oriention
+        if "view_mirrored" not in kwargs:
+            kwargs["view_mirrored"] = self.view_mirrored
 
         return LGameState(
             **kwargs,
@@ -295,8 +297,8 @@ class LGame:
             new_state = new_state.generate_successor(action, i)
 
             if isinstance(agent, ComputerAgent):
-                # action = action if not new_state.view_mirrored else action.mirror()
-                # action = action.rotate(-new_state.view_oriention.index())
+                action = action if not new_state.view_mirrored else action.mirror()
+                action = action.rotate(-new_state.view_oriention.index())
                 ellapsed = time.time() - start_time
                 print(f"\tplayer {i+1} chose: {str(action)} in {ellapsed:.2f}s")
                 for func_name, info in agent.get_cache_info(i).items():

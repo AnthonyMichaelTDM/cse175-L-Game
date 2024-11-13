@@ -19,6 +19,7 @@ class HumanAgent(Agent[LGameAction, LGameState]):
     A human agent for the L-game
     """
 
+
     def get_action(self, state: LGameState) -> LGameAction:
         """
         Get the next action from the human player
@@ -54,10 +55,12 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
                 moves = state.grid.get_blue_legal_moves() or []
 
             for move in moves:
-                # denorm_move = move if not state.view_mirrored else move.mirror()
-                # denorm_move = denorm_move.rotate(-state.view_oriention.index())
+                denorm_move = move if not state.view_mirrored else move.mirror()
+                denorm_move = denorm_move.rotate(-state.view_oriention.index())
                 print(
-                    f"\t{move.corner.x + 1} {move.corner.y + 1} {move.orientation.value}"
+                    f"\t{denorm_move.corner.x + 1} {denorm_move.corner.y +
+                                                    1} {denorm_move.orientation.value}"
+
                 )
             return self.get_action(state)
         if command == "exit":
@@ -71,8 +74,9 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
             return self.get_action(state)
 
         # transform action to normalized grid
-        # action = action if not state.view_mirrored else action.mirror()
-        # action = action.rotate(-state.view_oriention.index())
+        action = action if not state.view_mirrored else action.mirror()
+        action = action.rotate(-state.view_oriention.index(
+        )) if state.view_mirrored else action.rotate(state.view_oriention.index())
 
         # check if the action is legal
         if action not in self.get_rules().get_legal_actions(state, self.id):

@@ -111,9 +111,8 @@ class LPiecePosition:
     the coordinate is the coordinate of the corner of the L-piece, and the orientation is the direction that the foot of the L is facing (relative to the corner)
 
     Ex: (1, 2), Orientation.NORTH represents an L-piece with the corner at (1, 2) and the foot facing north
-
     """
-
+    
     corner: Coordinate
     orientation: Orientation
 
