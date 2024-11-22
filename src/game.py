@@ -4,6 +4,7 @@ Code for the game environment
 
 import abc
 from dataclasses import dataclass, field
+import functools
 import time
 from typing import Self, Sequence, override
 
@@ -19,7 +20,41 @@ from constants import (
 from grid import Grid
 
 
-@dataclass(frozen=True)
+class LegalActionsCache:
+    """
+    Singleton cache for storing legal actions for game states
+    """
+
+    _instance = None
+    _cache: dict[int, dict[Grid, list[LGameAction]]] = {
+        0: {state: [] for state in TERMINAL_STATES},
+        1: {_grid_swap_red_blue(state): [] for state in TERMINAL_STATES},
+    }
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(LegalActionsCache, cls).__new__(cls)
+        return cls._instance
+
+    def get(self, state: "LGameState", agent_id: int) -> list[LGameAction] | None:
+        return (
+            agent_cache.get(state.grid)
+            if (agent_cache := self._cache.get(agent_id))
+            else None
+        )
+
+    def set(self, state: "LGameState", agent_id: int, actions: list[LGameAction]):
+        self._cache[agent_id][state.grid] = actions
+
+    def __len__(self):
+        return sum(len(agent_cache) for agent_cache in self._cache.values())
+
+
+# Initialize the singleton cache
+legal_actions_cache = LegalActionsCache()
+
+
+@dataclass(frozen=True, slots=True)
 class GameState[Action](abc.ABC):
     """
     An abstract base class for a game state
@@ -27,6 +62,7 @@ class GameState[Action](abc.ABC):
 
     agents: Sequence[Agent[Action, Self]]
 
+    # @functools.lru_cache(maxsize=None)
     def get_legal_actions(self, agent_id: int) -> list[Action]:
         """
         Get the legal actions for the given agent in the state
@@ -39,10 +75,15 @@ class GameState[Action](abc.ABC):
         # if self.is_terminal():
         #     return []
 
+        # if cached := legal_actions_cache.get(self, agent_id):
+        #     return cached
+
         if agent_id < 0 or agent_id >= len(self.agents):
             raise ValueError(f"Invalid agent ID: {agent_id}")
 
-        return self.agents[agent_id].get_rules().get_legal_actions(self, agent_id)
+        actions = self.agents[agent_id].get_rules().get_legal_actions(self, agent_id)
+
+        return actions
 
     def generate_successor(self, action: Action, agent_id: int) -> Self:
         """
@@ -111,41 +152,7 @@ class GameState[Action](abc.ABC):
         ...
 
 
-class LegalActionsCache:
-    """
-    Singleton cache for storing legal actions for game states
-    """
-
-    _instance = None
-    _cache: dict[int, dict[Grid, list[LGameAction]]] = {
-        0: {state: [] for state in TERMINAL_STATES},
-        1: {_grid_swap_red_blue(state): [] for state in TERMINAL_STATES},
-    }
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(LegalActionsCache, cls).__new__(cls)
-        return cls._instance
-
-    def get(self, state: "LGameState", agent_id: int) -> list[LGameAction] | None:
-        return (
-            agent_cache.get(state.grid)
-            if (agent_cache := self._cache.get(agent_id))
-            else None
-        )
-
-    def set(self, state: "LGameState", agent_id: int, actions: list[LGameAction]):
-        self._cache[agent_id][state.grid] = actions
-
-    def __len__(self):
-        return sum(len(agent_cache) for agent_cache in self._cache.values())
-
-
-# Initialize the singleton cache
-legal_actions_cache = LegalActionsCache()
-
-
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class LGameState(GameState[LGameAction]):
     """
     The state of the L-game
@@ -158,14 +165,14 @@ class LGameState(GameState[LGameAction]):
     # the orientation to render the grid in (so that the view shown to the player is consistent)
     view_oriention: Orientation = Orientation.NORTH
     view_mirrored: bool = False
-    # red_to_move: bool = True  
+    # red_to_move: bool = True
 
     @override
     def get_legal_actions(self, agent_id: int) -> list[LGameAction]:
         if cached := legal_actions_cache.get(self, agent_id):
             return cached
 
-        actions = super().get_legal_actions(agent_id)
+        actions = super(LGameState, self).get_legal_actions(agent_id)
         legal_actions_cache.set(self, agent_id, actions)
         return actions
 
@@ -268,7 +275,7 @@ class LGameState(GameState[LGameAction]):
         )
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class LGame:
     """
     Handles the game loop and such for the L-game

@@ -41,7 +41,7 @@ class AgentRules[Action, State](abc.ABC):
         ...
 
 
-@dataclass()
+@dataclass(slots=True)
 class Agent[Action, State](abc.ABC):
     """
     An abstract base class for a game-playing agent
@@ -81,3 +81,6 @@ class Agent[Action, State](abc.ABC):
             AgentRules[Action, State]: the rules for the agent
         """
         ...
+
+    def __hash__(self) -> int:
+        return hash(self.id)

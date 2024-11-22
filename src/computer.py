@@ -19,7 +19,7 @@ from rules import LGameRules
 # TODO: reconsider caching for alphabeta, it should consider the values of alpha and beta as well as the depth so that the agents don't continue playing forever (by repeating the same moves)
 
 
-@dataclass()
+@dataclass(slots=True)
 class _CacheInfo:
     hits: int
     misses: int
@@ -245,6 +245,8 @@ class ComputerAgent(Agent[LGameAction, LGameState]):
     """
     An abstract base class for a computer agent
     """
+
+    __slots__ = ["id", "depth", "evaluation_function"]
 
     def __init__(
         self,

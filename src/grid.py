@@ -19,7 +19,7 @@ from cell import GridCell
 STRICT_MOVES = True
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Grid:
     """
     The 4x4 grid for the L-game
