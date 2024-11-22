@@ -11,7 +11,7 @@ from cell import GridCell
 from util import IndexableEnum
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Coordinate:
     """
     An (x,y) coordinate on the game board (4x4 grid), where (1,1) is the top-left corner
@@ -103,7 +103,7 @@ class Orientation(IndexableEnum):
         return OrientationDirections[int(self)]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class LPiecePosition:
     """
     An L-piece position, consisting of a coordinate and an orientation
@@ -112,7 +112,7 @@ class LPiecePosition:
 
     Ex: (1, 2), Orientation.NORTH represents an L-piece with the corner at (1, 2) and the foot facing north
     """
-    
+
     corner: Coordinate
     orientation: Orientation
 
@@ -185,7 +185,7 @@ ALL_VALID_LPIECE_POSITIONS_GRID_MASKS: dict[
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class NeutralPiecePosition:
     """
     A neutral piece position
@@ -218,7 +218,7 @@ class NeutralPiecePosition:
         return grid
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class LGameAction:
     """
     An action in the L-game
