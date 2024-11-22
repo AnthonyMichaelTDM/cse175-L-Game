@@ -62,7 +62,7 @@ def minimax_cache():
         get_depth = lambda args: args[2]
 
         cache: dict[Any, dict[Grid, tuple[int, tuple]]] = {}
-        hits = misses = {}
+        hits, misses = {}, {}
         # bound method to lookup a key or return None
         cache_get = lambda id: cache[id].get
         cache_len = lambda id: cache[id].__len__  # get cache size without calling len()
@@ -77,7 +77,7 @@ def minimax_cache():
             # if the agent doesn't have a cache, create one
             if id not in cache:
                 cache[id] = {}
-                hits[id] = misses[id] = 0
+                hits[id], misses[id] = 0, 0
 
             result = cache_get(id)(key, sentinel)
             if (
@@ -139,7 +139,7 @@ def alpha_beta_cache():
         get_beta = lambda args: args[4]
 
         cache: dict[Any, dict[Grid, tuple[int, float, float, LGameAction | None]]] = {}
-        hits = misses = {}
+        hits, misses = {}, {}
         # bound method to lookup a key or return None
         cache_get = lambda id: cache[id].get
         cache_len = lambda id: cache[id].__len__  # get cache size without calling len()
@@ -156,7 +156,7 @@ def alpha_beta_cache():
             # if the agent doesn't have a cache, create one
             if id not in cache:
                 cache[id] = {}
-                hits[id] = misses[id] = 0
+                hits[id], misses[id] = 0, 0
 
             result = cache_get(id)(key, sentinel)
             if (
