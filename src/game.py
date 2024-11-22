@@ -4,7 +4,6 @@ Code for the game environment
 
 import abc
 from dataclasses import dataclass, field
-import functools
 import time
 from typing import Self, Sequence, override
 
@@ -62,7 +61,6 @@ class GameState[Action](abc.ABC):
 
     agents: Sequence[Agent[Action, Self]]
 
-    # @functools.lru_cache(maxsize=None)
     def get_legal_actions(self, agent_id: int) -> list[Action]:
         """
         Get the legal actions for the given agent in the state
@@ -74,9 +72,6 @@ class GameState[Action](abc.ABC):
         """
         # if self.is_terminal():
         #     return []
-
-        # if cached := legal_actions_cache.get(self, agent_id):
-        #     return cached
 
         if agent_id < 0 or agent_id >= len(self.agents):
             raise ValueError(f"Invalid agent ID: {agent_id}")
@@ -169,10 +164,36 @@ class LGameState(GameState[LGameAction]):
 
     @override
     def get_legal_actions(self, agent_id: int) -> list[LGameAction]:
+        global legal_actions_cache
+
         if cached := legal_actions_cache.get(self, agent_id):
             return cached
 
         actions = super(LGameState, self).get_legal_actions(agent_id)
+        legal_actions_cache.set(self, agent_id, actions)
+        return actions
+
+    def get_sorted_legal_actions(self, agent_id: int) -> list[LGameAction]:
+        global legal_actions_cache
+
+        if cached := legal_actions_cache.get(self, agent_id):
+            return cached
+
+        from rules import LGameRules
+
+        actions = self.get_legal_actions(agent_id)
+        game_rules = LGameRules()
+
+        actions.sort(
+            key=lambda action: len(
+                game_rules.get_legal_actions(
+                    game_rules.apply_action(self, action, agent_id), 1 - agent_id
+                )
+            )
+            / 13.0,
+            # reverse=True, # if this is uncommented, it makes alpha-beta prune as few nodes as possible, which makes it way slower
+        )
+
         legal_actions_cache.set(self, agent_id, actions)
         return actions
 
@@ -273,6 +294,61 @@ class LGameState(GameState[LGameAction]):
         return LGameState(
             **kwargs,
         )
+
+
+def prepopulate_legal_actions_cache():
+    """
+    Prepopulate the legal actions cache for terminal states
+
+    We do this by performing a breadth-first graph search over the state space, starting from the initial state and depth-limited to a depth of 3
+
+    This doesn't actually check every possible state, but it gets over 99.7& of them
+    """
+    print("Prepopulating legal actions cache")
+
+    from computer import ComputerAgent, defensive_heuristic, aggressive_heuristic
+
+    class MockAgent(ComputerAgent):
+        def __init__(self, id: int):
+            super().__init__(id, 1, defensive_heuristic)
+
+        def get_action(self, state: LGameState) -> LGameAction: ...
+
+        def get_cache_info(self, id: int) -> dict[str, dict[str, int]]: ...
+
+    DEPTH_LIMIT = 3
+
+    initial_state = LGameState(
+        (
+            MockAgent(0),
+            MockAgent(1),
+        )
+    ).normalize()
+
+    frontier = [(initial_state, 0, 0)]  # (state, agent_id, depth)
+    visited = set()
+    while len(frontier) > 0:
+        (state, agent_id, depth) = frontier.pop()
+
+        if depth >= DEPTH_LIMIT:
+            continue
+
+        visited.add(state.grid)
+
+        for action in state.get_sorted_legal_actions(agent_id):
+            new_state = state.generate_successor(action, agent_id)
+            if new_state.grid not in visited:
+                if depth + 1 < DEPTH_LIMIT:
+                    frontier.append((new_state, 1 - agent_id, depth + 1))
+                visited.add(new_state.grid)
+
+                if len(visited) % 100 == 0:
+                    print(f"visited {len(visited)} states")
+
+    print(f"Done prepopulating legal actions cache, visited {len(visited)} states")
+
+
+prepopulate_legal_actions_cache()
 
 
 @dataclass(frozen=True, slots=True)
