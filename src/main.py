@@ -53,7 +53,7 @@ class AgentType(StrEnum):
         Get an agent of the specified type
         """
         if depth is None:
-            depth = randint(1,3)
+            depth = randint(1, 3)
             print(f"Agent {id} given random depth: {depth}")
 
         if heuristic is None:
@@ -122,6 +122,8 @@ player2 = args.p2.get_agent(1, args.d2 or args.d)
 
 # initialize the game
 game = LGame(LGameState((player1, player2)))
+
+game.prepopulate_caches()
 
 # run the game loop
 game.run()

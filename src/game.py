@@ -320,6 +320,31 @@ class LGame:
 
         return new_state, None
 
+    def prepopulate_caches(self):
+        """
+        Runs a step of the game to populate the caches of the computer agents up to some depth
+        """
+        from computer import ComputerAgent, MinimaxAgent, AlphaBetaAgent
+
+        state = self.initial_state.normalize()
+        for i, agent in enumerate(state.agents):
+            if not isinstance(agent, ComputerAgent):
+                continue
+
+            start_time = time.time()
+
+            if isinstance(agent, MinimaxAgent):
+                print(f"partially prepopulating Minimax cache for player {i+1}")
+                agent.max_value(state, min(agent.depth, 1))
+            elif isinstance(agent, AlphaBetaAgent):
+                print(f"partially populate AlphaBeta cache for player {i+1}")
+                agent.max_value(state, min(agent.depth, 2), float("-inf"), float("inf"))
+
+            ellapsed = time.time() - start_time
+            print(f"took {ellapsed:.2f}s")
+            for func_name, info in agent.get_cache_info(i).items():
+                print(f"{func_name} stats:{info}")
+
     def run(self):
         """
         Run the game loop
