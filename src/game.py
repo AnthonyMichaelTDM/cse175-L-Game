@@ -302,7 +302,7 @@ def prepopulate_legal_actions_cache():
 
     We do this by performing a breadth-first graph search over the state space, starting from the initial state and depth-limited to a depth of 3
 
-    This doesn't actually check every possible state, but it gets over 99.7& of them
+    This doesn't actually check every possible state, but it gets over 99.7% of them
     """
     print("Prepopulating legal actions cache")
 

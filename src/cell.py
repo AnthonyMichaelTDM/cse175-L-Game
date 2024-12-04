@@ -4,7 +4,6 @@ Implements the GridCell enum which represents the possible states of a cell in t
 
 from enum import Enum
 
-
 STRICT_CELL_ARITHMETIC = True
 
 # use a list instead of a dict because we can index into this list with the GridCell since it's an integer backed Enum
