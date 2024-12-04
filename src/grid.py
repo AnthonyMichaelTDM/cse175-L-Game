@@ -43,18 +43,33 @@ class Grid:
     """
 
     # grid is a 2d array of cells
+    # grid: np.ndarray = field(
+    #     default_factory=lambda: np.array(
+    #         [
+    #             [GridCell.EMPTY, GridCell.NEUTRAL, GridCell.EMPTY, GridCell.EMPTY],
+    #             [GridCell.EMPTY, GridCell.NEUTRAL, GridCell.RED, GridCell.RED],
+    #             [GridCell.BLUE, GridCell.BLUE, GridCell.BLUE, GridCell.RED],
+    #             [GridCell.BLUE, GridCell.EMPTY, GridCell.EMPTY, GridCell.RED],
+    #         ]
+    #     )
+    # )
+    # red_position: LPiecePosition = LPiecePosition(Coordinate(3, 1), Orientation.WEST)
+    # blue_position: LPiecePosition = LPiecePosition(Coordinate(0, 2), Orientation.SOUTH)
     grid: np.ndarray = field(
         default_factory=lambda: np.array(
             [
-                [GridCell.NEUTRAL, GridCell.RED, GridCell.RED, GridCell.EMPTY],
-                [GridCell.EMPTY, GridCell.BLUE, GridCell.RED, GridCell.EMPTY],
-                [GridCell.EMPTY, GridCell.BLUE, GridCell.RED, GridCell.EMPTY],
-                [GridCell.EMPTY, GridCell.BLUE, GridCell.BLUE, GridCell.NEUTRAL],
+                [GridCell.BLUE, GridCell.BLUE, GridCell.EMPTY, GridCell.EMPTY],
+                [GridCell.BLUE, GridCell.NEUTRAL, GridCell.EMPTY, GridCell.EMPTY],
+                [GridCell.BLUE, GridCell.EMPTY, GridCell.EMPTY, GridCell.RED],
+                [GridCell.NEUTRAL, GridCell.RED, GridCell.RED, GridCell.RED],
             ]
         )
     )
-    red_position: LPiecePosition = LPiecePosition(Coordinate(2, 0), Orientation.WEST)
-    blue_position: LPiecePosition = LPiecePosition(Coordinate(1, 3), Orientation.EAST)
+    red_position: LPiecePosition = LPiecePosition(
+        Coordinate(3, 3), Orientation.NORTH)
+    blue_position: LPiecePosition = LPiecePosition(
+        Coordinate(0, 0), Orientation.EAST)
+    
     neutral_positions: tuple[NeutralPiecePosition, NeutralPiecePosition] = field(
         default_factory=lambda: (
             NeutralPiecePosition(Coordinate(0, 0)),

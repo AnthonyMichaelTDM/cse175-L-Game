@@ -214,7 +214,6 @@ class LGameState(GameState[LGameAction]):
         Args:
             n (int): the number of times to rotate the game state
         """
-        print("called rotate")
         return LGameState(
             agents=self.agents,
             grid=self.grid,
@@ -348,7 +347,7 @@ def prepopulate_legal_actions_cache():
     print(f"Done prepopulating legal actions cache, visited {len(visited)} states")
 
 
-prepopulate_legal_actions_cache()
+# prepopulate_legal_actions_cache()
 
 
 @dataclass(frozen=True, slots=True)
