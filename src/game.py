@@ -347,7 +347,7 @@ def prepopulate_legal_actions_cache():
     print(f"Done prepopulating legal actions cache, visited {len(visited)} states")
 
 
-# prepopulate_legal_actions_cache()
+prepopulate_legal_actions_cache()
 
 
 @dataclass(frozen=True, slots=True)
