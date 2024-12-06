@@ -1842,7 +1842,10 @@ class HumanAgent(Agent[LGameAction, LGameState]):
 
         # prompt user for action
         command = input(
-            "\nEnter your move (type `help` for formatting instructions, `legal` for legal l-moves, `exit` to quit):\n"
+            """
+Enter your move (type `help` for formatting instructions, `legal` for legal l-moves, `exit` to quit,
+'rotate <int>' to rotate board 90 degrees counter-clockwise for <int> number of times, 'mirror' to flip the board accross Y axis):
+"""
         ).strip()
 
         if command == "help":
@@ -1873,6 +1876,14 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
             return self.get_action(state)
         if command == "exit":
             exit()
+        if command == "mirror":
+            state = state.copy(grid=state.grid.mirror())
+            print(state.render())
+            return self.get_action(state)
+
+        splited_command = command.split(" ")
+        if splited_command[0] == "rotate":
+            state = state.rotate(int(splited_command[1]))
 
         # parse the command
         try:
