@@ -5,6 +5,8 @@ Code for the computer agents (minimax and heuristic alpha-beta pruning)
 import abc
 from dataclasses import dataclass
 from typing import Any, Callable
+
+import numpy as np
 from action import (
     LGameAction,
 )
@@ -14,9 +16,6 @@ from grid import Grid
 from rules import LGameRules
 
 # TODO: improve evaluation functions and heuristics for the computer agents to use
-
-
-# TODO: reconsider caching for alphabeta, it should consider the values of alpha and beta as well as the depth so that the agents don't continue playing forever (by repeating the same moves)
 
 
 @dataclass(slots=True)
@@ -60,6 +59,8 @@ def minimax_cache():
         make_key = lambda args, _: args[1].grid
         # get the depth from the function arguments
         get_depth = lambda args: args[2]
+        # get the agent from the function arguments
+        get_self = lambda args: args[0]
 
         cache: dict[Any, dict[Grid, tuple[int, tuple]]] = {}
         hits, misses = {}, {}
@@ -72,6 +73,7 @@ def minimax_cache():
             nonlocal hits, misses
             key = make_key(args, kwds)
             depth = get_depth(args)
+            self_ = get_self(args)
             id = args[0].id
 
             # if the agent doesn't have a cache, create one
@@ -85,6 +87,16 @@ def minimax_cache():
                 and isinstance(result, tuple)
                 and result[0] >= depth
             ):
+                if depth == self_.depth and cache_len(id)() == 4592:
+                    # if we get a cache hit at the root, then try bumping the depth up by 1 so we can get a better result
+                    self_.depth += 1
+                    args = list(args)
+                    args[2] += 1
+                    print(f"Bumping depth up by 1, new max depth: {self_.depth}")
+                    result = func(*args, **kwds)
+                    cache[id][key] = (self_.depth, result)
+                    return result
+
                 hits[id] = (1 + hits[id]) if id in hits else 1
                 return result[1]
             misses[id] = (1 + misses[id]) if id in misses else 1
