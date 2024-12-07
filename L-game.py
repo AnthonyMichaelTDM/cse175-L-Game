@@ -1880,10 +1880,11 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
             state = state.copy(grid=state.grid.mirror())
             print(state.render())
             return self.get_action(state)
-
         splited_command = command.split(" ")
         if splited_command[0] == "rotate":
             state = state.rotate(int(splited_command[1]))
+            print(state.render())
+            return self.get_action(state)
 
         # parse the command
         try:
