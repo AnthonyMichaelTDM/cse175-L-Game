@@ -3,18 +3,16 @@ Code for the game environment
 """
 
 import abc
-from dataclasses import dataclass, field
+import sys
 import time
+from dataclasses import dataclass, field
 from typing import Self, Sequence, override
 
-from action import LGameAction, Orientation
+from action import LGameAction
 from agent import Agent
 from constants import (
-    _grid_swap_red_blue,
     TERMINAL_STATES,
-    # is_losing_state,
-    # is_terminal_state,
-    # is_winning_state,
+    _grid_swap_red_blue,
 )
 from grid import Grid
 
@@ -157,10 +155,6 @@ class LGameState(GameState[LGameAction]):
 
     # the internal grid, should always be normalized
     grid: Grid = field(default_factory=Grid)
-    # the orientation to render the grid in (so that the view shown to the player is consistent)
-    view_oriention: Orientation = Orientation.NORTH
-    view_mirrored: bool = False
-    # red_to_move: bool = True
 
     @override
     def get_legal_actions(self, agent_id: int) -> list[LGameAction]:
@@ -201,27 +195,9 @@ class LGameState(GameState[LGameAction]):
         """
         Render the game state
         """
-        denormalized = self.grid if not self.view_mirrored else self.grid.mirror()
-        rotated = denormalized.rotate(-self.view_oriention.index())
-        return rotated.render()
+        return self.grid.unapply_transformations(self.grid.transformations).render()
 
         # return self.grid.render()
-
-    def rotate(self, n: int = 1) -> "LGameState":
-        """
-        Rotate the game state 90 degrees clockwise n times
-
-        Args:
-            n (int): the number of times to rotate the game state
-        """
-        return LGameState(
-            agents=self.agents,
-            grid=self.grid,
-            view_oriention=Orientation.from_index(
-                (self.view_oriention.index() + n) % Orientation.LENGTH()
-            ),
-            view_mirrored=self.view_mirrored,
-        )
 
     def normalize(self) -> "LGameState":
         """
@@ -236,12 +212,9 @@ class LGameState(GameState[LGameAction]):
         Returns:
             LGameState: the normalized state
         """
-        new_grid, rotations, mirrored = self.grid.normalize()
         return LGameState(
             agents=self.agents,
-            grid=new_grid,
-            view_oriention=self.view_oriention.rotate(rotations),
-            view_mirrored=self.view_mirrored ^ mirrored,
+            grid=self.grid.normalize(),
         )
 
     def is_terminal(self) -> bool:
@@ -285,10 +258,6 @@ class LGameState(GameState[LGameAction]):
             kwargs["agents"] = self.agents
         if "grid" not in kwargs:
             kwargs["grid"] = self.grid
-        if "view_oriention" not in kwargs:
-            kwargs["view_oriention"] = self.view_oriention
-        if "view_mirrored" not in kwargs:
-            kwargs["view_mirrored"] = self.view_mirrored
 
         return LGameState(
             **kwargs,
@@ -305,7 +274,7 @@ def prepopulate_legal_actions_cache():
     """
     print("Prepopulating legal actions cache")
 
-    from computer import ComputerAgent, defensive_heuristic, aggressive_heuristic
+    from computer import ComputerAgent, defensive_heuristic
 
     class MockAgent(ComputerAgent):
         def __init__(self, id: int):
@@ -399,7 +368,7 @@ class LGame:
         """
         Runs a step of the game to populate the caches of the computer agents up to some depth
         """
-        from computer import ComputerAgent, MinimaxAgent, AlphaBetaAgent
+        from computer import AlphaBetaAgent, ComputerAgent, MinimaxAgent
 
         state = self.initial_state.normalize()
         for i, agent in enumerate(state.agents):

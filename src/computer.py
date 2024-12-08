@@ -6,10 +6,7 @@ import abc
 from dataclasses import dataclass
 from typing import Any, Callable
 
-import numpy as np
-from action import (
-    LGameAction,
-)
+from action import LGameAction
 from agent import Agent, AgentRules
 from game import LGameState
 from grid import Grid
@@ -176,7 +173,7 @@ def alpha_beta_cache():
                 and isinstance(result, tuple)
                 and result[0] >= depth
                 and result[1] <= alpha
-                and result[2] >= beta
+                and result[2] <= beta
             ):
                 hits[id] = (1 + hits[id]) if id in hits else 1
                 return result[3]

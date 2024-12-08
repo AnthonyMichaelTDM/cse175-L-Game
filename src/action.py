@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
-from cell import GridCell
 
-from util import IndexableEnum
+from cell import GridCell
+from util import IndexableEnum, Transformable
 
 
 @dataclass(frozen=True, slots=True)
-class Coordinate:
+class Coordinate(Transformable):
     """
     An (x,y) coordinate on the game board (4x4 grid), where (1,1) is the top-left corner
 
@@ -29,25 +29,21 @@ class Coordinate:
     def __sub__(self, other: "Coordinate") -> "Coordinate":
         return Coordinate(self.x - other.x, self.y - other.y)
 
-    def rotate(self, n: int = 1) -> "Coordinate":
+    def transpose(self) -> "Coordinate":
         """
-        Rotates the coordinate 90 degrees clockwise `n` times
+        Transpose the coordinate
         """
-        n = n % 4
+        return Coordinate(self.y, self.x)
 
-        if n < 0:
-            n += 4
-
-        x, y = self.x, self.y
-
-        for _ in range(n):
-            x, y = 3 - y, x
-
-        return Coordinate(x, y)
+    def flip(self) -> "Coordinate":
+        """
+        Flip the coordinate across the horizontal axis
+        """
+        return Coordinate(self.x, 3 - self.y)
 
     def mirror(self) -> "Coordinate":
         """
-        Mirror the coordinate across the x=2 line
+        Mirror the coordinate across the vertical axis
         """
         return Coordinate(3 - self.x, self.y)
 
@@ -78,33 +74,51 @@ class Orientation(IndexableEnum):
     SOUTH = "S"
     WEST = "W"
 
-    def rotate(self, n: int = 1) -> "Orientation":
+    def transpose(self) -> "Orientation":
         """
-        Rotates the orientation `n` times
+        Transpose the orientation
         """
-        n = n % 4
+        MAPPING = [
+            3,
+            2,
+            1,
+            0,
+        ]
 
-        if n < 0:
-            n += 4
+        return Orientation.from_index(MAPPING[int(self)])
 
-        return Orientation.from_index((int(self) + n) % 4)
+    def flip(self) -> "Orientation":
+        """
+        Flip the orientation across the horizontal axis
+        """
+        MAPPING = [
+            2,
+            1,
+            0,
+            3,
+        ]
+
+        return Orientation.from_index(MAPPING[int(self)])
 
     def mirror(self) -> "Orientation":
         """
-        Mirror the orientation across the x=2 line
+        Mirror the orientation across the vertical axis
         """
-        return (
-            self
-            if self == Orientation.NORTH or self == Orientation.SOUTH
-            else self.rotate(2)
-        )
+        MAPPING = [
+            0,
+            3,
+            2,
+            1,
+        ]
+
+        return Orientation.from_index(MAPPING[int(self)])
 
     def direction(self) -> Coordinate:
         return OrientationDirections[int(self)]
 
 
 @dataclass(frozen=True, slots=True)
-class LPiecePosition:
+class LPiecePosition(Transformable):
     """
     An L-piece position, consisting of a coordinate and an orientation
 
@@ -137,11 +151,9 @@ class LPiecePosition:
         head_direction = (
             direction
             if (
-                corner
-                + (direction := self.orientation.rotate(1).direction())
-                + direction
+                corner + (direction := self.orientation.next().direction()) + direction
             ).is_in_bounds()
-            else self.orientation.rotate(-1).direction()
+            else self.orientation.previous().direction()
         )
         head1 = corner + head_direction
         grid[head1.to_index()] = color
@@ -149,15 +161,21 @@ class LPiecePosition:
 
         return grid
 
-    def rotate(self, n: int = 1) -> "LPiecePosition":
+    def transpose(self) -> "LPiecePosition":
         """
-        Rotate the L-piece `n` times
+        Transpose the L-piece
         """
-        return LPiecePosition(self.corner.rotate(n), self.orientation.rotate(n))
+        return LPiecePosition(self.corner.transpose(), self.orientation.transpose())
+
+    def flip(self) -> "LPiecePosition":
+        """
+        Flip the L-piece across the horizontal axis
+        """
+        return LPiecePosition(self.corner.flip(), self.orientation.flip())
 
     def mirror(self) -> "LPiecePosition":
         """
-        Mirror the L-piece across the x=2 line
+        Mirror the L-piece across the vertical axis
         """
         return LPiecePosition(self.corner.mirror(), self.orientation.mirror())
 
@@ -186,7 +204,7 @@ ALL_VALID_LPIECE_POSITIONS_GRID_MASKS: dict[
 
 
 @dataclass(frozen=True, slots=True)
-class NeutralPiecePosition:
+class NeutralPiecePosition(Transformable):
     """
     A neutral piece position
     """
@@ -197,15 +215,21 @@ class NeutralPiecePosition:
         if not self.position.is_in_bounds():
             raise ValueError("Position must be in bounds")
 
-    def rotate(self, n: int = 1) -> "NeutralPiecePosition":
+    def transpose(self) -> "NeutralPiecePosition":
         """
-        Rotate the neutral piece `n` times
+        Transpose the neutral piece
         """
-        return NeutralPiecePosition(self.position.rotate(n))
+        return NeutralPiecePosition(self.position.transpose())
+
+    def flip(self) -> "NeutralPiecePosition":
+        """
+        Flip the neutral piece across the horizontal axis
+        """
+        return NeutralPiecePosition(self.position.flip())
 
     def mirror(self) -> "NeutralPiecePosition":
         """
-        Mirror the neutral piece across the x=2 line
+        Mirror the neutral piece across the vertical axis
         """
         return NeutralPiecePosition(self.position.mirror())
 
@@ -219,7 +243,7 @@ class NeutralPiecePosition:
 
 
 @dataclass(frozen=True, slots=True)
-class LGameAction:
+class LGameAction(Transformable):
     """
     An action in the L-game
     """
@@ -229,13 +253,28 @@ class LGameAction:
         None
     )
 
-    def rotate(self, n: int = 1) -> "LGameAction":
+    def transpose(self) -> "LGameAction":
         """
-        rotate the action `n` times
+        transpose the action
         """
-        l_piece_move = self.l_piece_move.rotate(n)
+        l_piece_move = self.l_piece_move.transpose()
         neutral_piece_move = (
-            (self.neutral_piece_move[0].rotate(n), self.neutral_piece_move[1].rotate(n))
+            (
+                self.neutral_piece_move[0].transpose(),
+                self.neutral_piece_move[1].transpose(),
+            )
+            if self.neutral_piece_move
+            else None
+        )
+        return LGameAction(l_piece_move, neutral_piece_move)
+
+    def flip(self) -> "LGameAction":
+        """
+        flip the action across the horizontal axis
+        """
+        l_piece_move = self.l_piece_move.flip()
+        neutral_piece_move = (
+            (self.neutral_piece_move[0].flip(), self.neutral_piece_move[1].flip())
             if self.neutral_piece_move
             else None
         )
@@ -243,7 +282,7 @@ class LGameAction:
 
     def mirror(self) -> "LGameAction":
         """
-        mirror the action across the x=2 line
+        mirror the action across the vertical axis
         """
         l_piece_move = self.l_piece_move.mirror()
         neutral_piece_move = (

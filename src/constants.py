@@ -143,9 +143,9 @@ def is_losing_state(grid: Grid, red_to_move: bool = True) -> bool:
     Returns True if the grid is a losing position for the player to move
     """
     if red_to_move:
-        return grid.normalize()[0] in TERMINAL_STATES
+        return grid.normalize() in TERMINAL_STATES
     else:
-        return _grid_swap_red_blue(grid).normalize()[0] in TERMINAL_STATES
+        return _grid_swap_red_blue(grid).normalize() in TERMINAL_STATES
 
 
 def is_winning_state(grid: Grid, red_to_move: bool = True) -> bool:

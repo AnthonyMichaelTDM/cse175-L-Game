@@ -2,12 +2,11 @@
 Tests for the rules module.
 """
 
-from dataclasses import dataclass
 from action import LGameAction
 from agent import Agent, AgentRules
+from constants import TERMINAL_STATES
 from game import LGameState
 from rules import LGameRules
-from constants import TERMINAL_STATES
 
 
 class MockAgent(Agent[LGameAction, LGameState]):

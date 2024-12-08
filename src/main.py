@@ -22,8 +22,8 @@ Then runs the game loop with the specified agents
 """
 
 import argparse
-from random import randint
 from enum import StrEnum
+from random import randint
 
 from action import LGameAction
 from agent import Agent

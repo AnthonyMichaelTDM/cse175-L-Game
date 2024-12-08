@@ -3,6 +3,20 @@ Tests for the util module.
 """
 
 from action import Orientation
+from util import Transform, TransformSeries
+
+
+def test_transform_series_methods():
+    ts = TransformSeries([Transform.TRANSPOSE, Transform.MIRROR])
+
+    assert len(ts) == 2
+    assert ts[0] == Transform.TRANSPOSE
+    assert ts[1] == Transform.MIRROR
+
+    assert ts.merge(Transform.TRANSPOSE) == TransformSeries(
+        [Transform.TRANSPOSE, Transform.MIRROR, Transform.TRANSPOSE]
+    )
+    assert ts.merge(Transform.MIRROR) == TransformSeries([Transform.TRANSPOSE])
 
 
 def test_indexable_enum():

@@ -19,7 +19,6 @@ class HumanAgent(Agent[LGameAction, LGameState]):
     A human agent for the L-game
     """
 
-
     def get_action(self, state: LGameState) -> LGameAction:
         """
         Get the next action from the human player
@@ -33,10 +32,10 @@ class HumanAgent(Agent[LGameAction, LGameState]):
 
         # prompt user for action
         command = input(
-            '''
+            """
 Enter your move (type `help` for formatting instructions, `legal` for legal l-moves, `exit` to quit,
-'rotate <int>' to rotate board 90 degrees counter-clockwise for <int> number of times, 'mirror' to flip the board accross Y axis):
-'''
+`transpose` to transpose the board, `flip` to flip the board accross X axis, 'mirror' to flip the board accross Y axis):
+"""
         ).strip()
 
         if command == "help":
@@ -58,25 +57,23 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
                 moves = state.grid.get_blue_legal_moves() or []
 
             for move in moves:
-                denorm_move = move if not state.view_mirrored else move.mirror()
-                denorm_move = denorm_move.rotate(-state.view_oriention.index())
+                denorm_move = move.unapply_transformations(state.grid.transformations)
                 print(
                     f"\t{denorm_move.corner.x + 1} {denorm_move.corner.y +
                                                     1} {denorm_move.orientation.value}"
-
                 )
             return self.get_action(state)
         if command == "exit":
             exit()
+        if command == "transpose":
+            state = state.copy(grid=state.grid.transpose())
+            print(state.render())
+            return self.get_action(state)
         if command == "mirror":
             state = state.copy(grid=state.grid.mirror())
             print(state.render())
             return self.get_action(state)
-        splited_command = command.split(" ")
-        if splited_command[0] == "rotate":
-            state = state.rotate(int(splited_command[1]))
-            print(state.render())
-            return self.get_action(state)
+
         # parse the command
         try:
             action = self.parse_command(command)
@@ -85,9 +82,7 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
             return self.get_action(state)
 
         # transform action to normalized grid
-        action = action if not state.view_mirrored else action.mirror()
-        action = action.rotate(-state.view_oriention.index(
-        )) if state.view_mirrored else action.rotate(state.view_oriention.index())
+        action = action.apply_transformations(state.grid.transformations)
 
         # check if the action is legal
         if action not in self.get_rules().get_legal_actions(state, self.id):

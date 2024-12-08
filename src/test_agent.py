@@ -3,6 +3,7 @@ Tests for the agent modules
 """
 
 import random
+
 from action import (
     Coordinate,
     LGameAction,
@@ -15,7 +16,6 @@ from computer import AlphaBetaAgent, MinimaxAgent, aggressive_heuristic
 from game import LGame, LGameState
 from grid import Grid
 from rules import LGameRules
-
 
 # Games, red to move, where a perfect blue will win in 1 move
 GAME_THAT_ENDS_IN_1_MOVE = [

@@ -2,9 +2,17 @@
 Tests for the grid module.
 """
 
-from action import Coordinate, LPiecePosition, NeutralPiecePosition, Orientation
-from grid import Grid
+from action import (
+    Coordinate,
+    LGameAction,
+    LPiecePosition,
+    NeutralPiecePosition,
+    Orientation,
+)
 from cell import GridCell
+from game import LGameState
+from grid import Grid
+from util import Transform, TransformSeries
 
 
 def test_cell_chars():
@@ -27,85 +35,77 @@ def test_render_initial_grid():
     assert grid.blue_position.orientation == Orientation.EAST
 
 
-def test_rotate_grid_1():
+def test_transpose_grid():
     grid = Grid()
-    grid = grid.rotate(1)
-    expected = """. . . #
-x x x +
-x + + +
-# . . ."""
-    assert grid.render() == expected
-    assert grid.red_position.corner == Coordinate(3, 2)
-    assert grid.red_position.orientation == Orientation.NORTH
-    assert grid.blue_position.corner == Coordinate(0, 1)
-    assert grid.blue_position.orientation == Orientation.SOUTH
-
-    assert grid == Grid().rotate(-3)
-
-
-def test_rotate_grid_2():
-    grid = Grid()
-    grid = grid.rotate(2)
-    expected = """# x x .
-. + x .
-. + x .
-. + + #"""
-    assert grid.render() == expected
-    assert grid.red_position.corner == Coordinate(1, 3)
-    assert grid.red_position.orientation == Orientation.EAST
-    assert grid.blue_position.corner == Coordinate(2, 0)
-    assert grid.blue_position.orientation == Orientation.WEST
-
-    assert grid == Grid().rotate(-2)
-
-
-def test_rotate_grid_3():
-    grid = Grid()
-    grid = grid.rotate(3)
-    expected = """. . . #
-+ + + x
-+ x x x
-# . . ."""
-    assert grid.render() == expected
-    assert grid.red_position.corner == Coordinate(0, 1)
-    assert grid.red_position.orientation == Orientation.SOUTH
-    assert grid.blue_position.corner == Coordinate(3, 2)
-    assert grid.blue_position.orientation == Orientation.NORTH
-
-    assert grid == Grid().rotate(-1)
-
-
-def test_rotate_grid_4():
-    grid = Grid()
-    grid = grid.rotate(4)
-    expected = """# + + .
-. x + .
-. x + .
-. x x #"""
-    assert grid.render() == expected
-    assert grid.red_position.corner == Coordinate(2, 0)
-    assert grid.red_position.orientation == Orientation.WEST
-    assert grid.blue_position.corner == Coordinate(1, 3)
-    assert grid.blue_position.orientation == Orientation.EAST
-
-    assert grid == Grid().rotate(0)
-
-
-def test_normalize_grid():
-    grid = Grid()
-    grid, n, mirrored = grid.normalize()
+    grid = grid.transpose()
     expected = """# . . .
 + x x x
 + + + x
 . . . #"""
 
-    assert n == 1
-    assert mirrored
     assert grid.render() == expected
     assert grid.red_position.corner == Coordinate(0, 2)
     assert grid.red_position.orientation == Orientation.NORTH
     assert grid.blue_position.corner == Coordinate(3, 1)
     assert grid.blue_position.orientation == Orientation.SOUTH
+    assert grid.transformations == TransformSeries([Transform.TRANSPOSE])
+
+
+def test_flip_grid():
+    grid = Grid()
+    grid = grid.flip()
+    expected = """. x x #
+. x + .
+. x + .
+# + + ."""
+    assert grid.render() == expected
+    assert grid.red_position.corner == Coordinate(2, 3)
+    assert grid.red_position.orientation == Orientation.WEST
+    assert grid.blue_position.corner == Coordinate(1, 0)
+    assert grid.blue_position.orientation == Orientation.EAST
+    assert grid.transformations == TransformSeries([Transform.FLIP])
+
+
+def test_mirror_grid():
+    grid = Grid()
+    grid = grid.mirror()
+    expected = """. + + #
+. + x .
+. + x .
+# x x ."""
+    assert grid.render() == expected
+    assert grid.red_position.corner == Coordinate(1, 0)
+    assert grid.red_position.orientation == Orientation.EAST
+    assert grid.blue_position.corner == Coordinate(2, 3)
+    assert grid.blue_position.orientation == Orientation.WEST
+    assert grid.transformations == TransformSeries([Transform.MIRROR])
+
+
+def test_normalize_grid():
+    grid = Grid()
+    grid = grid.normalize()
+    expected = """# . . .
++ x x x
++ + + x
+. . . #"""
+
+    assert grid.transformations == TransformSeries([Transform.TRANSPOSE])
+    assert grid.render() == expected
+    assert grid.red_position.corner == Coordinate(0, 2)
+    assert grid.red_position.orientation == Orientation.NORTH
+    assert grid.blue_position.corner == Coordinate(3, 1)
+    assert grid.blue_position.orientation == Orientation.SOUTH
+
+
+def test_normalize_denormalize_grid():
+    grid = Grid()
+    normalized_grid = grid.normalize()
+    denormalized_grid = normalized_grid.unapply_transformations(
+        normalized_grid.transformations
+    )
+    assert (
+        grid == denormalized_grid
+    ), "grid should be the same after normalizing and denormalizing"
 
 
 def test_new_with():
@@ -202,3 +202,67 @@ def test_mask_checks():
         assert not grid.is_mask_valid(
             mask, color
         ), f"mask: {mask} should be valid for {str(grid)}"
+
+
+def test_normalize_and_denormalize_all_grids():
+    # first, gather all the possible grid states
+    from computer import ComputerAgent, defensive_heuristic
+
+    class MockAgent(ComputerAgent):
+        def __init__(self, id: int):
+            super().__init__(id, 1, defensive_heuristic)
+
+        def get_action(self, state: LGameState) -> LGameAction: ...
+
+        def get_cache_info(self, id: int) -> dict[str, dict[str, int]]: ...
+
+    DEPTH_LIMIT = 3
+
+    initial_state = LGameState(
+        (
+            MockAgent(0),
+            MockAgent(1),
+        )
+    ).normalize()
+
+    frontier = [(initial_state, 0, 0)]  # (state, agent_id, depth)
+    visited: set[Grid] = set()
+    while len(frontier) > 0:
+        (state, agent_id, depth) = frontier.pop()
+
+        if depth >= DEPTH_LIMIT:
+            continue
+
+        visited.add(state.grid)
+
+        for action in state.get_legal_actions(agent_id):
+            new_state = state.generate_successor(action, agent_id)
+            if new_state.grid not in visited:
+                if depth + 1 < DEPTH_LIMIT:
+                    frontier.append((new_state, 1 - agent_id, depth + 1))
+                visited.add(new_state.grid)
+
+    for grid in visited:
+        grid = grid.unapply_transformations(grid.transformations)
+        assert len(grid.transformations) == 0
+        assert grid == grid.unapply_transformations(
+            grid.transformations
+        ), f"""
+grid:
+{str(grid)}
+should be the same after denormalizing
+"""
+        normalized_grid = grid.normalize()
+        normalized_red = normalized_grid.red_position
+        assert normalized_red.orientation == Orientation.NORTH
+        assert normalized_red.corner.x < 2
+
+        assert grid == normalized_grid.unapply_transformations(
+            normalized_grid.transformations
+        ), f"""
+grid:
+{str(grid)}
+should be the same after normalizing and denormalizing, but got
+{str(normalized_grid.unapply_transformations(normalized_grid.transformations))}
+instead
+"""

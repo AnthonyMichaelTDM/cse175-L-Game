@@ -15,12 +15,13 @@ from action import (
     Orientation,
 )
 from cell import GridCell
+from util import Transform, Transformable, TransformSeries
 
 STRICT_MOVES = True
 
 
 @dataclass(frozen=True, slots=True)
-class Grid:
+class Grid(Transformable):
     """
     The 4x4 grid for the L-game
 
@@ -53,16 +54,15 @@ class Grid:
             ]
         )
     )
-    red_position: LPiecePosition = LPiecePosition(
-        Coordinate(2, 0), Orientation.WEST)
-    blue_position: LPiecePosition = LPiecePosition(
-        Coordinate(1, 3), Orientation.EAST)
+    red_position: LPiecePosition = LPiecePosition(Coordinate(2, 0), Orientation.WEST)
+    blue_position: LPiecePosition = LPiecePosition(Coordinate(1, 3), Orientation.EAST)
     neutral_positions: tuple[NeutralPiecePosition, NeutralPiecePosition] = field(
         default_factory=lambda: (
             NeutralPiecePosition(Coordinate(0, 0)),
             NeutralPiecePosition(Coordinate(3, 3)),
         )
     )
+    transformations: TransformSeries = field(default_factory=lambda: TransformSeries())
 
     @classmethod
     def _new_with(
@@ -91,8 +91,9 @@ class Grid:
             red_position=red_position,
             blue_position=blue_position,
             neutral_positions=neutral_positions,
+            transformations=TransformSeries(),
         )
-        grid, _, _ = grid.normalize()
+        grid = grid.normalize()
 
         return grid
 
@@ -146,6 +147,7 @@ class Grid:
             red_position=new_position,
             blue_position=self.blue_position,
             neutral_positions=self.neutral_positions,
+            transformations=self.transformations,
         )
 
     def move_blue(self, new_position: LPiecePosition) -> "Grid":
@@ -175,6 +177,7 @@ class Grid:
             red_position=self.red_position,
             blue_position=new_position,
             neutral_positions=self.neutral_positions,
+            transformations=self.transformations,
         )
 
     def move_neutral(
@@ -210,6 +213,7 @@ class Grid:
             red_position=self.red_position,
             blue_position=self.blue_position,
             neutral_positions=neutral_positions,
+            transformations=self.transformations,
         )
 
     def render(self) -> str:
@@ -221,37 +225,35 @@ class Grid:
     def __str__(self) -> str:
         return "\n".join(" ".join(str(cell) for cell in row) for row in self.grid)
 
-    def rotate(self, n: int = 1) -> "Grid":
+    def transpose(self) -> "Grid":
         """
-        Rotate the grid 90 degrees clockwise n times
-
-        Args:
-            n (int): the number of times to rotate the grid
+        Transpose the grid
         """
         return Grid(
-            grid=np.rot90(self.grid, -n),
-            red_position=self.red_position.rotate(n),
-            blue_position=self.blue_position.rotate(n),
+            grid=self.grid.T,
+            red_position=self.red_position.transpose(),
+            blue_position=self.blue_position.transpose(),
             neutral_positions=(
-                self.neutral_positions[0].rotate(n),
-                self.neutral_positions[1].rotate(n),
+                self.neutral_positions[0].transpose(),
+                self.neutral_positions[1].transpose(),
             ),
+            transformations=self.transformations.merge(Transform.TRANSPOSE),
         )
 
-    def normalize(self) -> tuple["Grid", int, bool]:
+    def flip(self) -> "Grid":
         """
-        Normalize the grid by rotating it such that the red L-piece is oriented such that the long end points to the right and the short end points up
-
-        Returns the normalized grid, the number of times the grid was rotated, and whether the grid was mirrored
+        Flip the grid along the horizontal axis
         """
-        n = Orientation.LENGTH() - self.red_position.orientation.index()
-        grid = self.rotate(n)
-
-        # check if we need to mirror the grid
-        if grid.red_position.corner.x > 1:
-            return grid.mirror(), n, True
-
-        return grid, n, False
+        return Grid(
+            grid=np.flipud(self.grid),
+            red_position=self.red_position.flip(),
+            blue_position=self.blue_position.flip(),
+            neutral_positions=(
+                self.neutral_positions[0].flip(),
+                self.neutral_positions[1].flip(),
+            ),
+            transformations=self.transformations.merge(Transform.FLIP),
+        )
 
     def mirror(self) -> "Grid":
         """
@@ -265,7 +267,29 @@ class Grid:
                 self.neutral_positions[0].mirror(),
                 self.neutral_positions[1].mirror(),
             ),
+            transformations=self.transformations.merge(Transform.MIRROR),
         )
+
+    def normalize(self) -> "Grid":
+        """
+        Normalize the grid by
+        performing one or more of the following transformations:
+        - mirror the grid along the vertical axis
+        - flip the grid along the horizontal axis
+        - transpose the grid
+        such that the red L-piece is oriented such that the long end points to the right and the short end points up
+
+        Returns the normalized grid
+        """
+        result = self.unapply_transformations(self.transformations)
+        assert len(result.transformations) == 0
+        if result.red_position.orientation in [Orientation.WEST, Orientation.EAST]:
+            result = result.transpose()
+        if result.red_position.orientation == Orientation.SOUTH:
+            result = result.flip()
+        if result.red_position.corner.x > 1:
+            result = result.mirror()
+        return result
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Grid):
