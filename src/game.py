@@ -344,16 +344,19 @@ class LGame:
             # get the next action
             action = agent.get_action(new_state)
 
-            # generate the successor state
-            new_state = new_state.generate_successor(action, i)
-
             if isinstance(agent, ComputerAgent):
-                action = action if not new_state.view_mirrored else action.mirror()
-                action = action.rotate(-new_state.view_oriention.index())
+                denormed_action = action.unapply_transformations(
+                    new_state.grid.transformations
+                )
                 ellapsed = time.time() - start_time
-                print(f"\tplayer {i+1} chose: {str(action)} in {ellapsed:.2f}s")
+                print(
+                    f"\tplayer {i+1} chose: {str(denormed_action)} in {ellapsed:.2f}s"
+                )
                 for func_name, info in agent.get_cache_info(i).items():
                     print(f"{func_name} stats:{info}")
+
+            # generate the successor state
+            new_state = new_state.generate_successor(action, i)
 
             # render new state
             print()
