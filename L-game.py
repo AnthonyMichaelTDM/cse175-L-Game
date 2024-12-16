@@ -31,6 +31,7 @@ from typing import (
     Any,
     Callable,
     Generic,
+    Iterable,
     Optional,
     Self,
     Sequence,
@@ -132,6 +133,63 @@ class GridCell(Enum):
         return self.value >> other
 
 
+class Transform(Enum):
+    TRANSPOSE = 0
+    FLIP = 1
+    MIRROR = 2
+
+
+@dataclass(frozen=True, slots=True)
+class TransformSeries:
+    transformations: list[Transform] = field(default_factory=list)
+
+    def merge(self, transformation: Transform):
+        """
+        Create a new transformation series with the given transformation appended to the end if it is different from the last transformation
+        otherwise, returns a new transformation series with the last transformation removed
+        """
+        if self.transformations and self.transformations[-1] == transformation:
+            return TransformSeries(self.transformations[:-1])
+        return TransformSeries(self.transformations + [transformation])
+
+    def __len__(self):
+        return len(self.transformations)
+
+    def __getitem__(self, index):
+        return self.transformations[index]
+
+    def __iter__(self):
+        return iter(self.transformations)
+
+
+class Transformable(abc.ABC):
+    @abc.abstractmethod
+    def transpose(self) -> Self:
+        pass
+
+    @abc.abstractmethod
+    def flip(self) -> Self:
+        pass
+
+    @abc.abstractmethod
+    def mirror(self) -> Self:
+        pass
+
+    def apply_transformations(self, transformations: Iterable[Transform]) -> Self:
+        obj = self
+        for transformation in transformations:
+            if transformation == Transform.TRANSPOSE:
+                obj = obj.transpose()
+            elif transformation == Transform.FLIP:
+                obj = obj.flip()
+            elif transformation == Transform.MIRROR:
+                obj = obj.mirror()
+        return obj
+
+    def unapply_transformations(self, transformations: TransformSeries):
+        return self.apply_transformations(reversed(transformations))
+
+
 class IndexableEnum(Generic[T], Enum):
     """
     An enum type whose variants are of type T and who has an additional index attribute that is the 0-based index of the variant in the enum (in order of definition).
@@ -147,11 +205,11 @@ class IndexableEnum(Generic[T], Enum):
         SOUTH = "S"
         WEST = "W"
 
-    Orientation.NORTH.index  # 0
+    Orientation.NORTH.index()  # 0
     Orientation.NORTH.value  # "N"
     Orientation("N")  # Orientation.NORTH
     Orientation(0) # Orientation.NORTH
-    Orientation.EAST.index  # 1
+    Orientation.EAST.index()  # 1
     ```
     """
 
@@ -180,6 +238,12 @@ class IndexableEnum(Generic[T], Enum):
             raise ValueError(f"Invalid index: {index}")
         return member_index[index]
 
+    def next(self) -> Self:
+        return self.from_index((self.index() + 1) % self.LENGTH())
+
+    def previous(self) -> Self:
+        return self.from_index((self.index() - 1) % self.LENGTH())
+
     def __str__(self) -> str:
         return str(self.value)
 
@@ -198,7 +262,7 @@ class IndexableEnum(Generic[T], Enum):
 
 
 @dataclass(frozen=True, slots=True)
-class Coordinate:
+class Coordinate(Transformable):
     """
     An (x,y) coordinate on the game board (4x4 grid), where (1,1) is the top-left corner
 
@@ -215,25 +279,21 @@ class Coordinate:
     def __sub__(self, other: "Coordinate") -> "Coordinate":
         return Coordinate(self.x - other.x, self.y - other.y)
 
-    def rotate(self, n: int = 1) -> "Coordinate":
+    def transpose(self) -> "Coordinate":
         """
-        Rotates the coordinate 90 degrees clockwise `n` times
+        Transpose the coordinate
         """
-        n = n % 4
+        return Coordinate(self.y, self.x)
 
-        if n < 0:
-            n += 4
-
-        x, y = self.x, self.y
-
-        for _ in range(n):
-            x, y = 3 - y, x
-
-        return Coordinate(x, y)
+    def flip(self) -> "Coordinate":
+        """
+        Flip the coordinate across the horizontal axis
+        """
+        return Coordinate(self.x, 3 - self.y)
 
     def mirror(self) -> "Coordinate":
         """
-        Mirror the coordinate across the x=2 line
+        Mirror the coordinate across the vertical axis
         """
         return Coordinate(3 - self.x, self.y)
 
@@ -264,33 +324,51 @@ class Orientation(IndexableEnum):
     SOUTH = "S"
     WEST = "W"
 
-    def rotate(self, n: int = 1) -> "Orientation":
+    def transpose(self) -> "Orientation":
         """
-        Rotates the orientation `n` times
+        Transpose the orientation
         """
-        n = n % 4
+        MAPPING = [
+            3,
+            2,
+            1,
+            0,
+        ]
 
-        if n < 0:
-            n += 4
+        return Orientation.from_index(MAPPING[int(self)])
 
-        return Orientation.from_index((int(self) + n) % 4)
+    def flip(self) -> "Orientation":
+        """
+        Flip the orientation across the horizontal axis
+        """
+        MAPPING = [
+            2,
+            1,
+            0,
+            3,
+        ]
+
+        return Orientation.from_index(MAPPING[int(self)])
 
     def mirror(self) -> "Orientation":
         """
-        Mirror the orientation across the x=2 line
+        Mirror the orientation across the vertical axis
         """
-        return (
-            self
-            if self == Orientation.NORTH or self == Orientation.SOUTH
-            else self.rotate(2)
-        )
+        MAPPING = [
+            0,
+            3,
+            2,
+            1,
+        ]
+
+        return Orientation.from_index(MAPPING[int(self)])
 
     def direction(self) -> Coordinate:
         return OrientationDirections[int(self)]
 
 
 @dataclass(frozen=True, slots=True)
-class LPiecePosition:
+class LPiecePosition(Transformable):
     """
     An L-piece position, consisting of a coordinate and an orientation
 
@@ -323,11 +401,9 @@ class LPiecePosition:
         head_direction = (
             direction
             if (
-                corner
-                + (direction := self.orientation.rotate(1).direction())
-                + direction
+                corner + (direction := self.orientation.next().direction()) + direction
             ).is_in_bounds()
-            else self.orientation.rotate(-1).direction()
+            else self.orientation.previous().direction()
         )
         head1 = corner + head_direction
         grid[head1.to_index()] = color
@@ -335,15 +411,21 @@ class LPiecePosition:
 
         return grid
 
-    def rotate(self, n: int = 1) -> "LPiecePosition":
+    def transpose(self) -> "LPiecePosition":
         """
-        Rotate the L-piece `n` times
+        Transpose the L-piece
         """
-        return LPiecePosition(self.corner.rotate(n), self.orientation.rotate(n))
+        return LPiecePosition(self.corner.transpose(), self.orientation.transpose())
+
+    def flip(self) -> "LPiecePosition":
+        """
+        Flip the L-piece across the horizontal axis
+        """
+        return LPiecePosition(self.corner.flip(), self.orientation.flip())
 
     def mirror(self) -> "LPiecePosition":
         """
-        Mirror the L-piece across the x=2 line
+        Mirror the L-piece across the vertical axis
         """
         return LPiecePosition(self.corner.mirror(), self.orientation.mirror())
 
@@ -372,7 +454,7 @@ ALL_VALID_LPIECE_POSITIONS_GRID_MASKS: dict[
 
 
 @dataclass(frozen=True, slots=True)
-class NeutralPiecePosition:
+class NeutralPiecePosition(Transformable):
     """
     A neutral piece position
     """
@@ -383,15 +465,21 @@ class NeutralPiecePosition:
         if not self.position.is_in_bounds():
             raise ValueError("Position must be in bounds")
 
-    def rotate(self, n: int = 1) -> "NeutralPiecePosition":
+    def transpose(self) -> "NeutralPiecePosition":
         """
-        Rotate the neutral piece `n` times
+        Transpose the neutral piece
         """
-        return NeutralPiecePosition(self.position.rotate(n))
+        return NeutralPiecePosition(self.position.transpose())
+
+    def flip(self) -> "NeutralPiecePosition":
+        """
+        Flip the neutral piece across the horizontal axis
+        """
+        return NeutralPiecePosition(self.position.flip())
 
     def mirror(self) -> "NeutralPiecePosition":
         """
-        Mirror the neutral piece across the x=2 line
+        Mirror the neutral piece across the vertical axis
         """
         return NeutralPiecePosition(self.position.mirror())
 
@@ -405,7 +493,7 @@ class NeutralPiecePosition:
 
 
 @dataclass(frozen=True, slots=True)
-class LGameAction:
+class LGameAction(Transformable):
     """
     An action in the L-game
     """
@@ -415,13 +503,28 @@ class LGameAction:
         None
     )
 
-    def rotate(self, n: int = 1) -> "LGameAction":
+    def transpose(self) -> "LGameAction":
         """
-        rotate the action `n` times
+        transpose the action
         """
-        l_piece_move = self.l_piece_move.rotate(n)
+        l_piece_move = self.l_piece_move.transpose()
         neutral_piece_move = (
-            (self.neutral_piece_move[0].rotate(n), self.neutral_piece_move[1].rotate(n))
+            (
+                self.neutral_piece_move[0].transpose(),
+                self.neutral_piece_move[1].transpose(),
+            )
+            if self.neutral_piece_move
+            else None
+        )
+        return LGameAction(l_piece_move, neutral_piece_move)
+
+    def flip(self) -> "LGameAction":
+        """
+        flip the action across the horizontal axis
+        """
+        l_piece_move = self.l_piece_move.flip()
+        neutral_piece_move = (
+            (self.neutral_piece_move[0].flip(), self.neutral_piece_move[1].flip())
             if self.neutral_piece_move
             else None
         )
@@ -429,7 +532,7 @@ class LGameAction:
 
     def mirror(self) -> "LGameAction":
         """
-        mirror the action across the x=2 line
+        mirror the action across the vertical axis
         """
         l_piece_move = self.l_piece_move.mirror()
         neutral_piece_move = (
@@ -532,7 +635,7 @@ STRICT_MOVES = True
 
 
 @dataclass(frozen=True, slots=True)
-class Grid:
+class Grid(Transformable):
     """
     The 4x4 grid for the L-game
 
@@ -573,6 +676,7 @@ class Grid:
             NeutralPiecePosition(Coordinate(3, 3)),
         )
     )
+    transformations: TransformSeries = field(default_factory=lambda: TransformSeries())
 
     @classmethod
     def _new_with(
@@ -601,8 +705,9 @@ class Grid:
             red_position=red_position,
             blue_position=blue_position,
             neutral_positions=neutral_positions,
+            transformations=TransformSeries(),
         )
-        grid, _, _ = grid.normalize()
+        grid = grid.normalize()
 
         return grid
 
@@ -656,6 +761,7 @@ class Grid:
             red_position=new_position,
             blue_position=self.blue_position,
             neutral_positions=self.neutral_positions,
+            transformations=self.transformations,
         )
 
     def move_blue(self, new_position: LPiecePosition) -> "Grid":
@@ -685,6 +791,7 @@ class Grid:
             red_position=self.red_position,
             blue_position=new_position,
             neutral_positions=self.neutral_positions,
+            transformations=self.transformations,
         )
 
     def move_neutral(
@@ -720,6 +827,7 @@ class Grid:
             red_position=self.red_position,
             blue_position=self.blue_position,
             neutral_positions=neutral_positions,
+            transformations=self.transformations,
         )
 
     def render(self) -> str:
@@ -731,37 +839,35 @@ class Grid:
     def __str__(self) -> str:
         return "\n".join(" ".join(str(cell) for cell in row) for row in self.grid)
 
-    def rotate(self, n: int = 1) -> "Grid":
+    def transpose(self) -> "Grid":
         """
-        Rotate the grid 90 degrees clockwise n times
-
-        Args:
-            n (int): the number of times to rotate the grid
+        Transpose the grid
         """
         return Grid(
-            grid=np.rot90(self.grid, -n),
-            red_position=self.red_position.rotate(n),
-            blue_position=self.blue_position.rotate(n),
+            grid=self.grid.T,
+            red_position=self.red_position.transpose(),
+            blue_position=self.blue_position.transpose(),
             neutral_positions=(
-                self.neutral_positions[0].rotate(n),
-                self.neutral_positions[1].rotate(n),
+                self.neutral_positions[0].transpose(),
+                self.neutral_positions[1].transpose(),
             ),
+            transformations=self.transformations.merge(Transform.TRANSPOSE),
         )
 
-    def normalize(self) -> tuple["Grid", int, bool]:
+    def flip(self) -> "Grid":
         """
-        Normalize the grid by rotating it such that the red L-piece is oriented such that the long end points to the right and the short end points up
-
-        Returns the normalized grid, the number of times the grid was rotated, and whether the grid was mirrored
+        Flip the grid along the horizontal axis
         """
-        n = Orientation.LENGTH() - self.red_position.orientation.index()
-        grid = self.rotate(n)
-
-        # check if we need to mirror the grid
-        if grid.red_position.corner.x > 1:
-            return grid.mirror(), n, True
-
-        return grid, n, False
+        return Grid(
+            grid=np.flipud(self.grid),
+            red_position=self.red_position.flip(),
+            blue_position=self.blue_position.flip(),
+            neutral_positions=(
+                self.neutral_positions[0].flip(),
+                self.neutral_positions[1].flip(),
+            ),
+            transformations=self.transformations.merge(Transform.FLIP),
+        )
 
     def mirror(self) -> "Grid":
         """
@@ -775,7 +881,29 @@ class Grid:
                 self.neutral_positions[0].mirror(),
                 self.neutral_positions[1].mirror(),
             ),
+            transformations=self.transformations.merge(Transform.MIRROR),
         )
+
+    def normalize(self) -> "Grid":
+        """
+        Normalize the grid by
+        performing one or more of the following transformations:
+        - mirror the grid along the vertical axis
+        - flip the grid along the horizontal axis
+        - transpose the grid
+        such that the red L-piece is oriented such that the long end points to the right and the short end points up
+
+        Returns the normalized grid
+        """
+        result = self.unapply_transformations(self.transformations)
+        assert len(result.transformations) == 0
+        if result.red_position.orientation in [Orientation.WEST, Orientation.EAST]:
+            result = result.transpose()
+        if result.red_position.orientation == Orientation.SOUTH:
+            result = result.flip()
+        if result.red_position.corner.x > 1:
+            result = result.mirror()
+        return result
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Grid):
@@ -1007,9 +1135,9 @@ def is_losing_state(grid: Grid, red_to_move: bool = True) -> bool:
     Returns True if the grid is a losing position for the player to move
     """
     if red_to_move:
-        return grid.normalize()[0] in TERMINAL_STATES
+        return grid.normalize() in TERMINAL_STATES
     else:
-        return _grid_swap_red_blue(grid).normalize()[0] in TERMINAL_STATES
+        return _grid_swap_red_blue(grid).normalize() in TERMINAL_STATES
 
 
 def is_winning_state(grid: Grid, red_to_move: bool = True) -> bool:
@@ -1164,10 +1292,6 @@ class LGameState(GameState[LGameAction]):
 
     # the internal grid, should always be normalized
     grid: Grid = field(default_factory=Grid)
-    # the orientation to render the grid in (so that the view shown to the player is consistent)
-    view_oriention: Orientation = Orientation.NORTH
-    view_mirrored: bool = False
-    # red_to_move: bool = True
 
     @override
     def get_legal_actions(self, agent_id: int) -> list[LGameAction]:
@@ -1206,28 +1330,9 @@ class LGameState(GameState[LGameAction]):
         """
         Render the game state
         """
-        denormalized = self.grid if not self.view_mirrored else self.grid.mirror()
-        rotated = denormalized.rotate(-self.view_oriention.index())
-        return rotated.render()
+        return self.grid.unapply_transformations(self.grid.transformations).render()
 
         # return self.grid.render()
-
-    def rotate(self, n: int = 1) -> "LGameState":
-        """
-        Rotate the game state 90 degrees clockwise n times
-
-        Args:
-            n (int): the number of times to rotate the game state
-        """
-        print("called rotate")
-        return LGameState(
-            agents=self.agents,
-            grid=self.grid,
-            view_oriention=Orientation.from_index(
-                (self.view_oriention.index() + n) % Orientation.LENGTH()
-            ),
-            view_mirrored=self.view_mirrored,
-        )
 
     def normalize(self) -> "LGameState":
         """
@@ -1242,13 +1347,7 @@ class LGameState(GameState[LGameAction]):
         Returns:
             LGameState: the normalized state
         """
-        new_grid, rotations, mirrored = self.grid.normalize()
-        return LGameState(
-            agents=self.agents,
-            grid=new_grid,
-            view_oriention=self.view_oriention.rotate(rotations),
-            view_mirrored=self.view_mirrored ^ mirrored,
-        )
+        return LGameState(agents=self.agents, grid=self.grid.normalize())
 
     def is_terminal(self) -> bool:
         """
@@ -1291,10 +1390,6 @@ class LGameState(GameState[LGameAction]):
             kwargs["agents"] = self.agents
         if "grid" not in kwargs:
             kwargs["grid"] = self.grid
-        if "view_oriention" not in kwargs:
-            kwargs["view_oriention"] = self.view_oriention
-        if "view_mirrored" not in kwargs:
-            kwargs["view_mirrored"] = self.view_mirrored
 
         return LGameState(
             **kwargs,
@@ -1433,6 +1528,8 @@ def minimax_cache():
         make_key = lambda args, _: args[1].grid
         # get the depth from the function arguments
         get_depth = lambda args: args[2]
+        # get the agent from the function arguments
+        get_self = lambda args: args[0]
 
         cache: dict[Any, dict[Grid, tuple[int, tuple]]] = {}
         hits, misses = {}, {}
@@ -1445,6 +1542,7 @@ def minimax_cache():
             nonlocal hits, misses
             key = make_key(args, kwds)
             depth = get_depth(args)
+            self_ = get_self(args)
             id = args[0].id
 
             # if the agent doesn't have a cache, create one
@@ -1458,6 +1556,16 @@ def minimax_cache():
                 and isinstance(result, tuple)
                 and result[0] >= depth
             ):
+                if depth == self_.depth and cache_len(id)() == 4592:
+                    # if we get a cache hit at the root, then try bumping the depth up by 1 so we can get a better result
+                    self_.depth += 1
+                    args = list(args)
+                    args[2] += 1
+                    print(f"Bumping depth up by 1, new max depth: {self_.depth}")
+                    result = func(*args, **kwds)
+                    cache[id][key] = (self_.depth, result)
+                    return result
+
                 hits[id] = (1 + hits[id]) if id in hits else 1
                 return result[1]
             misses[id] = (1 + misses[id]) if id in misses else 1
@@ -1844,7 +1952,7 @@ class HumanAgent(Agent[LGameAction, LGameState]):
         command = input(
             """
 Enter your move (type `help` for formatting instructions, `legal` for legal l-moves, `exit` to quit,
-'rotate <int>' to rotate board 90 degrees counter-clockwise for <int> number of times, 'mirror' to flip the board accross Y axis):
+`transpose` to transpose the board, `flip` to flip the board accross X axis, 'mirror' to flip the board accross Y axis):
 """
         ).strip()
 
@@ -1867,8 +1975,7 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
                 moves = state.grid.get_blue_legal_moves() or []
 
             for move in moves:
-                denorm_move = move if not state.view_mirrored else move.mirror()
-                denorm_move = denorm_move.rotate(-state.view_oriention.index())
+                denorm_move = move.unapply_transformations(state.grid.transformations)
                 print(
                     f"\t{denorm_move.corner.x + 1} {denorm_move.corner.y +
                                                     1} {denorm_move.orientation.value}"
@@ -1876,13 +1983,12 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
             return self.get_action(state)
         if command == "exit":
             exit()
-        if command == "mirror":
-            state = state.copy(grid=state.grid.mirror())
+        if command == "transpose":
+            state = state.copy(grid=state.grid.transpose())
             print(state.render())
             return self.get_action(state)
-        splited_command = command.split(" ")
-        if splited_command[0] == "rotate":
-            state = state.rotate(int(splited_command[1]))
+        if command == "mirror":
+            state = state.copy(grid=state.grid.mirror())
             print(state.render())
             return self.get_action(state)
 
@@ -1894,12 +2000,7 @@ and a neutral piece is moved from (4,3) to (1,1). If not moving a neutral piece,
             return self.get_action(state)
 
         # transform action to normalized grid
-        action = action if not state.view_mirrored else action.mirror()
-        action = (
-            action.rotate(-state.view_oriention.index())
-            if state.view_mirrored
-            else action.rotate(state.view_oriention.index())
-        )
+        action = action.apply_transformations(state.grid.transformations)
 
         # check if the action is legal
         if action not in self.get_rules().get_legal_actions(state, self.id):
@@ -2019,16 +2120,19 @@ class LGame:
             # get the next action
             action = agent.get_action(new_state)
 
-            # generate the successor state
-            new_state = new_state.generate_successor(action, i)
-
             if isinstance(agent, ComputerAgent):
-                action = action if not new_state.view_mirrored else action.mirror()
-                action = action.rotate(-new_state.view_oriention.index())
+                denormed_action = action.unapply_transformations(
+                    new_state.grid.transformations
+                )
                 ellapsed = time.time() - start_time
-                print(f"\tplayer {i+1} chose: {str(action)} in {ellapsed:.2f}s")
+                print(
+                    f"\tplayer {i+1} chose: {str(denormed_action)} in {ellapsed:.2f}s"
+                )
                 for func_name, info in agent.get_cache_info(i).items():
                     print(f"{func_name} stats:{info}")
+
+            # generate the successor state
+            new_state = new_state.generate_successor(action, i)
 
             # render new state
             print()
